@@ -1,0 +1,293 @@
+syntax = "proto3";
+
+package flowrust;
+
+
+service API {
+    // the following is copied from docs.onflow.org/access-api/
+    rpc Ping(PingRequest) returns (PingResponse);
+
+    rpc GetLatestBlockHeader (GetLatestBlockHeaderRequest) returns (BlockHeaderResponse);
+
+    rpc GetBlockHeaderByID (GetBlockHeaderByIDRequest) returns (BlockHeaderResponse);
+
+    rpc GetBlockHeaderByHeight (GetBlockHeaderByHeightRequest) returns (BlockHeaderResponse);
+
+    rpc GetLatestBlock (GetLatestBlockRequest) returns (BlockResponse);
+
+    rpc GetBlockByID (GetBlockByIDRequest) returns (BlockResponse);
+
+    rpc GetBlockByHeight (GetBlockByHeightRequest) returns (BlockResponse);
+
+    rpc GetCollectionByID (GetCollectionByIDRequest) returns (CollectionResponse);
+
+    rpc SendTransaction (SendTransactionRequest) returns (SendTransactionResponse);
+
+    rpc GetTransaction (GetTransactionRequest) returns (TransactionResponse);
+
+    rpc GetTransactionResult (GetTransactionRequest) returns (TransactionResultResponse);
+
+    rpc GetAccountAtLatestBlock(GetAccountAtLatestBlockRequest) returns (AccountResponse);
+
+    rpc GetAccountAtBlockHeight(GetAccountAtBlockHeightRequest) returns (AccountResponse);
+
+    rpc ExecuteScriptAtLatestBlock (ExecuteScriptAtLatestBlockRequest) returns (ExecuteScriptResponse);
+
+    rpc ExecuteScriptAtBlockID (ExecuteScriptAtBlockIDRequest) returns (ExecuteScriptResponse);
+
+    rpc ExecuteScriptAtBlockHeight (ExecuteScriptAtBlockHeightRequest) returns (ExecuteScriptResponse);
+
+    rpc GetEventsForHeightRange(GetEventsForHeightRangeRequest) returns (EventsResponse);
+
+    rpc GetEventsForBlockIDs(GetEventsForBlockIDsRequest) returns (EventsResponse);
+
+    rpc GetNetworkParameters (GetNetworkParametersRequest) returns (GetNetworkParametersResponse);
+
+    rpc GetLatestProtocolStateSnapshot (GetLatestProtocolStateSnapshotRequest) returns (ProtocolStateSnapshotResponse);
+
+    rpc GetExecutionResultForBlockID(GetExecutionResultForBlockIDRequest) returns (ExecutionResultForBlockIDResponse);
+}
+
+// ping
+message PingRequest {}
+message PingResponse {}
+
+// block headers
+message BlockHeaderResponse {
+  flow.BlockHeader block
+}
+message GetLatestBlockHeaderRequest {
+  bool is_sealed
+}
+message GetBlockHeaderByIDRequest {
+  bytes id
+}
+message GetBlockHeaderByHeightRequest {
+  uint64 height
+}
+
+// blocks
+message BlockResponse {
+  flow.Block block
+}
+message GetLatestBlockRequest {
+  bool is_sealed
+}
+message GetBlockByIDRequest {
+  bytes id
+}
+message GetBlockByHeightRequest {
+  uint64 height
+}
+
+// collections
+message CollectionResponse {
+  flow.Collection collection
+}
+message GetCollectionByIDRequest {
+  bytes id
+}
+
+// transactions
+message SendTransactionResponse {
+  bytes id
+}
+message SendTransactionRequest {
+  flow.Transaction transaction
+}
+message GetTransactionRequest {
+  bytes id
+}
+message TransactionResponse {
+  flow.Transaction transaction
+}
+message TransactionResultResponse {
+  flow.TransactionStatus status
+  uint32 status_code
+  string error_message
+  repeated flow.Event events
+}
+
+// accounts
+message AccountResponse {
+  Account account
+}
+message GetAccountAtLatestBlockRequest {
+  bytes address
+}
+message GetAccountAtBlockHeightRequest {
+  bytes address
+  uint64 block_height
+}
+
+// scripts
+message ExecuteScriptResponse {
+  bytes value
+}
+message ExecuteScriptAtLatestBlockRequest {
+  bytes script
+}
+message ExecuteScriptAtBlockIDRequest {
+  bytes block_id
+  bytes script
+}
+message ExecuteScriptAtBlockHeightRequest {
+  uint64 block_height
+  bytes script
+}
+
+// events
+message EventsResponse {
+  message Result {
+    bytes block_id = 1;
+    uint64 block_height = 2;
+    repeated entities.Event events = 3;
+    google.protobuf.Timestamp block_timestamp = 4;
+  }
+  repeated Result results = 1;
+}
+message GetEventsForHeightRangeRequest {
+  string type
+  uint64 start_height = 2;
+  uint64 end_height = 3;
+}
+message GetEventsForBlockIDsRequest {
+  string type = 1;
+  repeated bytes block_ids = 2;
+}
+
+
+// network parameters
+message GetNetworkParametersResponse {
+  string chain_id = 1;
+}
+message GetNetworkParametersRequest {}
+
+// protocol state
+message ProtocolStateSnapshotResponse {
+  bytes serializedSnapshot = 1;
+}
+message GetLatestProtocolStateSnapshotRequest {}
+
+// execution results
+message ExecutionResultForBlockIDResponse {
+  flow.ExecutionResult execution_result = 1;
+}
+message GetExecutionResultForBlockIDRequest {
+  bytes block_id = 1;
+}
+
+
+message Block {
+  bytes id
+  bytes parent_id
+  uint64 height
+  google.protobuf.Timestamp timestamp
+  repeated CollectionGuarantee collection_guarantees
+  repeated BlockSeal block_seals
+  repeated bytes signatures
+}
+
+message BlockHeader {
+  bytes id
+  bytes parent_id
+  uint64 height
+}
+
+message BlockSeal {
+  bytes block_id
+  bytes execution_receipt_id
+  repeated bytes execution_receipt_signatures
+  repeated bytes result_approval_signatures
+}
+
+message Collection {
+  bytes id
+  repeated bytes transaction_ids
+}
+
+message CollectionGuarantee {
+  bytes collection_id
+  repeated bytes signatures
+}
+
+message Transaction {
+  bytes script
+  repeated bytes arguments
+  bytes reference_block_id
+  uint64 gas_limit
+  TransactionProposalKey proposal_key
+  bytes payer
+  repeated bytes authorizers
+  repeated TransactionSignature payload_signatures
+  repeated TransactionSignature envelope_signatures
+}
+
+message TransactionProposalKey {
+  bytes address
+  uint32 key_id
+  uint64 sequence_number
+}
+
+message TransactionSignature {
+  bytes address
+  uint32 key_id
+  bytes signature
+}
+
+enum TransactionStatus {
+  UNKNOWN = 0;
+  PENDING = 1;
+  FINALIZED = 2;
+  EXECUTED = 3;
+  SEALED = 4;
+  EXPIRED = 5;
+}
+
+message Account {
+  bytes address
+  uint64 balance
+  bytes code
+  repeated AccountKey keys
+  map<string, bytes> contracts
+}
+
+message AccountKey {
+  uint32 id
+  bytes public_key
+  uint32 sign_algo
+  uint32 hash_algo
+  uint32 weight
+  uint32 sequence_number
+  bool revoked
+}
+
+message Event {
+  string type
+  bytes transaction_id
+  uint32 transaction_index
+  uint32 event_index
+  bytes payload
+}
+
+message ExecutionResult {
+  bytes previous_result_id
+  bytes block_id
+  repeated Chunk chunks
+  repeated ServiceEvent service_events
+}
+
+message Chunk {
+  bytes start_state
+  bytes event_collection
+  bytes block_id
+  uint64 total_computation_used
+  uint64 number_of_transactions
+  uint64 index
+  bytes end_state
+}
+
+message ServiceEvent {
+  string type;
+  bytes payload;
+}

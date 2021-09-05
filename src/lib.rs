@@ -30,7 +30,6 @@ pub struct FlowBlock {}
 
 pub struct FlowEvent {}
 
-
 // ****************************************************
 // Public Methods
 // ****************************************************
@@ -85,14 +84,29 @@ pub fn execute_transaction(
 ) -> Result<FlowTransactionResult, Box<dyn error::Error>> {
 }
 
-// get block 
-pub fn get_block(block_id: u32) -> Result<FlowBlock, Box<dyn error::Error>> {}
+// get_block accepts either the block_id or block_height. If neither are defined it returns the latest block.
+pub fn get_block(
+    block_id: Option<String>,
+    block_height: Option<u32>,
+) -> Result<FlowBlock, Box<dyn error::Error>> {
+}
 
-// get event
+// TODO get_event description
 pub fn get_event(event_name: String) -> Result<FlowEvent, Box<dyn error::Error>> {}
 
-// get collection
+// TODO get collection description
 pub fn get_collection(collection_id: String) -> Result<FlowEvent, Box<dyn error::Error>> {}
+
+
+// ****************************************************
+// Private Methods
+// ****************************************************
+
+
+
+// ****************************************************
+// Testing
+// ****************************************************
 
 #[cfg(test)]
 mod tests {
