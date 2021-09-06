@@ -1,11 +1,12 @@
 [package]
 name = "flow-rust-sdk"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2018"
 
 [dependencies]
 tonic = "0.5"
 prost = "0.8"
+hex = "0.4.3"
 
 [build-dependencies]
 tonic-build = "0.5"

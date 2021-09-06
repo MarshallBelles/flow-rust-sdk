@@ -23,6 +23,9 @@ pub mod flow {
     tonic::include_proto!("flow.access");
 }
 
+extern crate hex;
+
+
 // ****************************************************
 // Public Methods
 // ****************************************************
@@ -47,7 +50,7 @@ pub async fn get_account(
     let mut client = AccessApiClient::connect(network_address).await?;
 
     let request = tonic::Request::new(GetAccountAtLatestBlockRequest {
-        address: address.as_bytes().to_vec(),
+        address: hex::decode(address).unwrap()
     });
 
     let response = client.get_account_at_latest_block(request).await?;
@@ -76,8 +79,8 @@ pub async fn build_transaction(
     reference_block_id: Vec<u8>,
     gas_limit: u64,
     proposer: TransactionProposalKey,
-    authorizers: Vec<Vec<u8>>,
-    payer: Vec<u8>,
+    authorizers: Vec<String>,
+    payer: String,
 ) -> Result<Transaction, Box<dyn error::Error>> {
     Ok(Transaction {
         script,
@@ -85,10 +88,10 @@ pub async fn build_transaction(
         reference_block_id: reference_block_id,
         gas_limit: gas_limit,
         proposal_key: Some(proposer),
-        authorizers: authorizers,
+        authorizers: authorizers.iter().map(|x| hex::decode(x).unwrap()).collect(),
         payload_signatures: vec![],
         envelope_signatures: vec![],
-        payer: payer,
+        payer: hex::decode(payer).unwrap(),
     })
 }
 
