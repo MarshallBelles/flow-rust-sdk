@@ -164,7 +164,7 @@ pub async fn get_block(
             Ok(response.into_inner())
         } else {
             let mut client = AccessApiClient::connect(network_address).await?;
-            let request = tonic::Request::new(GetLatestBlockRequest { is_sealed: true });
+            let request = tonic::Request::new(GetLatestBlockRequest { is_sealed: false });
             let response = client.get_latest_block(request).await?;
             Ok(response.into_inner())
         }
