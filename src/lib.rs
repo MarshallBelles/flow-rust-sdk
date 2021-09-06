@@ -1,7 +1,5 @@
 // ****************************************************
-// Welcome to the MONOLITHIC flow-rust-sdk library!
-// This project is under heavy construction
-// Expect breaking changes
+// Welcome to the flow-rust-sdk!
 // Please read the license file
 // ****************************************************
 
@@ -10,99 +8,212 @@
 // ****************************************************
 use std::error;
 
-// ****************************************************
-// Data Models
-// ****************************************************
+use flow::api_client::ApiClient;
 
-// These are the keys to our accounts
-pub struct FlowKeys {
-    public: String,
-    private: String,
+use flow::{
+    AccountKey, AccountResponse, BlockResponse, CollectionResponse, EventsResponse,
+    ExecuteScriptAtLatestBlockRequest, ExecuteScriptResponse, GetAccountAtLatestBlockRequest,
+    GetBlockByHeightRequest, GetBlockByIdRequest, GetCollectionByIdRequest,
+    GetEventsForBlockIdsRequest, GetEventsForHeightRangeRequest, GetLatestBlockRequest,
+    PingRequest, SendTransactionRequest, SendTransactionResponse, Transaction,
+};
+
+pub mod flow {
+    tonic::include_proto!("flowrust");
 }
-
-// This is the data representing our account on the blockchain
-pub struct FlowAccount {}
-
-// This is the result of our transaction execution
-pub struct FlowTransactionResult {}
-
-pub struct FlowBlock {}
-
-pub struct FlowEvent {}
 
 // ****************************************************
 // Public Methods
 // ****************************************************
 
-// get_account expects the address and will return the FlowAccount or an Err
-pub fn get_account(address: String) -> Result<FlowAccount, Box<dyn error::Error>> {}
+// check the availability of the blockchain
+// if this times out, it's probably because the endpoint timed out.
+pub async fn check_availability(network_address: String) -> Result<(), Box<dyn error::Error>> {
+    let mut client = ApiClient::connect(network_address).await?;
 
-// create_account expects an optional FlowKeys and will return FlowAccount or Err
-// if FlowKeys is not provided, the service account keys from flow.config will
-// be used with a weight of 1000
-pub fn create_account(keys: Option<FlowKeys>) -> Result<FlowAccount, Box<dyn error::Error>> {}
+    let request = tonic::Request::new(PingRequest {});
 
-pub fn add_contract(
-    contract_name: String,
-    contract: Vec<u8>,
-    keys: Option<FlowKeys>,
-) -> Result<FlowAccount, Box<dyn error::Error>> {
+    client.ping(request).await?;
+
+    Ok(())
 }
 
-pub fn update_contract(
-    contract_name: String,
-    contract: Vec<u8>,
-    keys: Option<FlowKeys>,
-) -> Result<FlowAccount, Box<dyn error::Error>> {
+// get_account expects the address and will return the Account or an Err
+pub async fn get_account(
+    network_address: String,
+    address: String,
+) -> Result<AccountResponse, Box<dyn error::Error>> {
+    let mut client = ApiClient::connect(network_address).await?;
+
+    let request = tonic::Request::new(GetAccountAtLatestBlockRequest {
+        address: address.as_bytes().to_vec(),
+    });
+
+    let response = client.get_account_at_latest_block(request).await?;
+
+    Ok(response.into_inner())
 }
 
-pub fn remove_contract(
-    contract_name: String,
-    keys: Option<FlowKeys>,
-) -> Result<FlowAccount, Box<dyn error::Error>> {
-}
+// TODO: create account with provided public key
+pub async fn create_account(
+    network_address: String,
+    key: AccountKey,
+) -> Result<AccountResponse, Box<dyn error::Error>> {
+    // Send to chain
+    let mut client = ApiClient::connect(network_address).await?;
 
-// deploy_project reads from the flow.config and deploys the project
-// update_if_exists will allow updating the contract
-pub fn deploy_project(
-    contract_name: String,
-    update_if_exists: Option<bool>,
-) -> Result<FlowAccount, Box<dyn error::Error>> {
+    //
+    //
+    //
+    // find the replacement for GetAccountAtLatestBlockRequest that will create an account
+    //
+    //
+    //
+    let request = tonic::Request::new(GetAccountAtLatestBlockRequest {
+        address: "".as_bytes().to_vec(),
+    });
+
+    //
+    //
+    // implement the above, rebuild protoc generated code
+    // edit get_account_at_latest_block to create_account or w/e it is
+    //
+    //
+    let response = client.get_account_at_latest_block(request).await?;
+
+    Ok(response.into_inner())
 }
 
 // execute_script will attempt to run the script and return the result as T or Error
-pub fn execute_script<T>(script: Vec<u8>) -> Result<T, Box<dyn error::Error>> {}
+pub async fn execute_script(
+    network_address: String,
+    script: Vec<u8>,
+) -> Result<ExecuteScriptResponse, Box<dyn error::Error>> {
+    let mut client = ApiClient::connect(network_address).await?;
+
+    let request = tonic::Request::new(ExecuteScriptAtLatestBlockRequest { script });
+
+    let response = client.execute_script_at_latest_block(request).await?;
+
+    Ok(response.into_inner())
+}
 
 // build, sign, and execute transaction
-pub fn execute_transaction(
+pub async fn execute_transaction(
+    network_address: String,
+    proposer: AccountKey,
+    authorizer: AccountKey,
     transaction: Vec<u8>,
-    proposer: FlowKeys,
-    authorizer: FlowKeys,
-    payer: FlowKeys,
-    signers_inner: Vec<FlowKeys>,
-    signers_outter: Vec<FlowKeys>,
-) -> Result<FlowTransactionResult, Box<dyn error::Error>> {
+    payer: AccountKey,
+    payload_signatures: Vec<AccountKey>,
+    envelope_signatures: Vec<AccountKey>,
+) -> Result<SendTransactionResponse, Box<dyn error::Error>> {
+    // build transaction
+    let build: Option<Transaction> = None;
+    //
+    //
+    //
+    //
+
+    // sign transaction
+    //
+    //
+    //
+    //
+
+    // send to blockchain
+    let mut client = ApiClient::connect(network_address).await?;
+
+    let request = tonic::Request::new(SendTransactionRequest { transaction: build });
+
+    let response = client.send_transaction(request).await?;
+
+    Ok(response.into_inner())
 }
 
 // get_block accepts either the block_id or block_height. If neither are defined it returns the latest block.
-pub fn get_block(
+pub async fn get_block(
+    network_address: String,
     block_id: Option<String>,
-    block_height: Option<u32>,
-) -> Result<FlowBlock, Box<dyn error::Error>> {
+    block_height: Option<u64>,
+    is_sealed: Option<bool>,
+) -> Result<BlockResponse, Box<dyn error::Error>> {
+    if block_id.is_some() {
+        // IF block_id, use this
+        let mut client = ApiClient::connect(network_address).await?;
+        let request = tonic::Request::new(GetBlockByIdRequest {
+            id: block_id.unwrap().as_bytes().to_vec(),
+        });
+        let response = client.get_block_by_id(request).await?;
+        Ok(response.into_inner())
+    } else if block_height.is_some() {
+        // else IF block_height, use that
+        let mut client = ApiClient::connect(network_address).await?;
+        let request = tonic::Request::new(GetBlockByHeightRequest {
+            height: block_height.unwrap(),
+        });
+        let response = client.get_block_by_height(request).await?;
+        Ok(response.into_inner())
+    } else {
+        // else, just get latest block
+        if is_sealed.is_some() {
+            let mut client = ApiClient::connect(network_address).await?;
+            let request = tonic::Request::new(GetLatestBlockRequest {
+                is_sealed: is_sealed.unwrap(),
+            });
+            let response = client.get_latest_block(request).await?;
+            Ok(response.into_inner())
+        } else {
+            let mut client = ApiClient::connect(network_address).await?;
+            let request = tonic::Request::new(GetLatestBlockRequest { is_sealed: true });
+            let response = client.get_latest_block(request).await?;
+            Ok(response.into_inner())
+        }
+    }
 }
 
-// TODO get_event description
-pub fn get_event(event_name: String) -> Result<FlowEvent, Box<dyn error::Error>> {}
+//
+pub async fn get_events_for_height_range(
+    network_address: String,
+    event_type: String,
+    start_height: u64,
+    end_height: u64,
+) -> Result<EventsResponse, Box<dyn error::Error>> {
+    let mut client = ApiClient::connect(network_address).await?;
+    let request = tonic::Request::new(GetEventsForHeightRangeRequest {
+        r#type: event_type,
+        start_height,
+        end_height,
+    });
+    let response = client.get_events_for_height_range(request).await?;
+    Ok(response.into_inner())
+}
 
-// TODO get collection description
-pub fn get_collection(collection_id: String) -> Result<FlowEvent, Box<dyn error::Error>> {}
+//
+pub async fn get_events_for_block_ids(
+    network_address: String,
+    event_type: String,
+    ids: Vec<Vec<u8>>,
+) -> Result<EventsResponse, Box<dyn error::Error>> {
+    let mut client = ApiClient::connect(network_address).await?;
+    let request = tonic::Request::new(GetEventsForBlockIdsRequest {
+        r#type: event_type,
+        block_ids: ids,
+    });
+    let response = client.get_events_for_block_i_ds(request).await?;
+    Ok(response.into_inner())
+}
 
-
-// ****************************************************
-// Private Methods
-// ****************************************************
-
-
+//
+pub async fn get_collection(
+    network_address: String,
+    collection_id: Vec<u8>,
+) -> Result<CollectionResponse, Box<dyn error::Error>> {
+    let mut client = ApiClient::connect(network_address).await?;
+    let request = tonic::Request::new(GetCollectionByIdRequest { id: collection_id });
+    let response = client.get_collection_by_id(request).await?;
+    Ok(response.into_inner())
+}
 
 // ****************************************************
 // Testing
