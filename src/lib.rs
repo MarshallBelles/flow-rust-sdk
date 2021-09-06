@@ -1847,7 +1847,7 @@ pub async fn get_block(
     }
 }
 
-//
+// retrieve the specified events by type for the given height range
 pub async fn get_events_for_height_range(
     network_address: String,
     event_type: String,
@@ -1864,7 +1864,7 @@ pub async fn get_events_for_height_range(
     Ok(response.into_inner())
 }
 
-//
+// retrieve the specified events by type for the given blocks
 pub async fn get_events_for_block_ids(
     network_address: String,
     event_type: String,
@@ -1879,7 +1879,7 @@ pub async fn get_events_for_block_ids(
     Ok(response.into_inner())
 }
 
-//
+// retrieve the specified collections
 pub async fn get_collection(
     network_address: String,
     collection_id: Vec<u8>,
