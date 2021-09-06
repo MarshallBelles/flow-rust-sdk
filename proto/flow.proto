@@ -1,10 +1,11 @@
 syntax = "proto3";
 
-package flowrust;
+package flow.access;
 
 
-service Api { // this will generate into api_server and api_client, we only need to use the api_client.
-    // the following is copied from docs.onflow.org/access-api/
+service AccessAPI {
+    // The following is copied from https://docs.onflow.org/access-api/
+    // You should also reference https://github.com/onflow/flow/blob/master/protobuf/flow/access/access.proto
     rpc Ping(PingRequest) returns (PingResponse);
 
     rpc GetLatestBlockHeader (GetLatestBlockHeaderRequest) returns (BlockHeaderResponse);
