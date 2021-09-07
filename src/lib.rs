@@ -26,8 +26,8 @@ pub mod flow {
 
 // for signing transactions
 pub use p256::ecdsa;
-
-extern crate hex;
+pub extern crate hex;
+pub extern crate rlp;
 
 // ****************************************************
 // Public Methods
@@ -110,11 +110,9 @@ pub async fn sign_transaction(
     let payload_signatures = vec![];
     let envelope_signatures = vec![];
     // for each of the payload private keys, sign the transaction
-    for pkey in payload_private_keys {
-    }
+    for pkey in payload_private_keys {}
     // for each of the envelope private keys, sign the transaction
-    for pkey in envelope_private_keys {
-    }
+    for pkey in envelope_private_keys {}
     let signed_transaction = Some(Transaction {
         script: built_transaction.script,
         arguments: built_transaction.arguments,
