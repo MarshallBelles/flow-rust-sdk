@@ -24,6 +24,9 @@ pub mod flow {
     tonic::include_proto!("flow.access");
 }
 
+// for signing transactions
+pub use p256::ecdsa;
+
 extern crate hex;
 
 // ****************************************************
@@ -101,9 +104,17 @@ pub async fn build_transaction(
 // sign
 pub async fn sign_transaction(
     built_transaction: Transaction,
-    payload_signatures: Vec<TransactionSignature>,
-    envelope_signatures: Vec<TransactionSignature>,
+    payload_private_keys: Vec<String>,
+    envelope_private_keys: Vec<String>,
 ) -> Result<Option<Transaction>, Box<dyn error::Error>> {
+    let payload_signatures = vec![];
+    let envelope_signatures = vec![];
+    // for each of the payload private keys, sign the transaction
+    for pkey in payload_private_keys {
+    }
+    // for each of the envelope private keys, sign the transaction
+    for pkey in envelope_private_keys {
+    }
     let signed_transaction = Some(Transaction {
         script: built_transaction.script,
         arguments: built_transaction.arguments,
