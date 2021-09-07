@@ -15,8 +15,9 @@ use flow::{
     ExecuteScriptAtLatestBlockRequest, ExecuteScriptResponse, GetAccountAtLatestBlockRequest,
     GetBlockByHeightRequest, GetBlockByIdRequest, GetCollectionByIdRequest,
     GetEventsForBlockIdsRequest, GetEventsForHeightRangeRequest, GetLatestBlockRequest,
-    PingRequest, SendTransactionRequest, SendTransactionResponse, Transaction,
-    TransactionProposalKey, TransactionSignature,
+    GetTransactionRequest, PingRequest, SendTransactionRequest, SendTransactionResponse,
+    Transaction, TransactionProposalKey, TransactionResponse, TransactionResultResponse,
+    TransactionSignature,
 };
 
 pub mod flow {
@@ -24,7 +25,6 @@ pub mod flow {
 }
 
 extern crate hex;
-
 
 // ****************************************************
 // Public Methods
@@ -50,7 +50,7 @@ pub async fn get_account(
     let mut client = AccessApiClient::connect(network_address).await?;
 
     let request = tonic::Request::new(GetAccountAtLatestBlockRequest {
-        address: hex::decode(address).unwrap()
+        address: hex::decode(address).unwrap(),
     });
 
     let response = client.get_account_at_latest_block(request).await?;
@@ -88,7 +88,10 @@ pub async fn build_transaction(
         reference_block_id: reference_block_id,
         gas_limit: gas_limit,
         proposal_key: Some(proposer),
-        authorizers: authorizers.iter().map(|x| hex::decode(x).unwrap()).collect(),
+        authorizers: authorizers
+            .iter()
+            .map(|x| hex::decode(x).unwrap())
+            .collect(),
         payload_signatures: vec![],
         envelope_signatures: vec![],
         payer: hex::decode(payer).unwrap(),
@@ -126,6 +129,36 @@ pub async fn execute_transaction(
     let request = tonic::Request::new(SendTransactionRequest { transaction });
 
     let response = client.send_transaction(request).await?;
+
+    Ok(response.into_inner())
+}
+
+// get transaction result
+pub async fn get_transaction_result(
+    network_address: String,
+    id: Vec<u8>,
+) -> Result<TransactionResultResponse, Box<dyn error::Error>> {
+    // send to blockchain
+    let mut client = AccessApiClient::connect(network_address).await?;
+
+    let request = tonic::Request::new(GetTransactionRequest { id });
+
+    let response = client.get_transaction_result(request).await?;
+
+    Ok(response.into_inner())
+}
+
+// get transaction result
+pub async fn get_transaction(
+    network_address: String,
+    id: Vec<u8>,
+) -> Result<TransactionResponse, Box<dyn error::Error>> {
+    // send to blockchain
+    let mut client = AccessApiClient::connect(network_address).await?;
+
+    let request = tonic::Request::new(GetTransactionRequest { id });
+
+    let response = client.get_transaction(request).await?;
 
     Ok(response.into_inner())
 }
