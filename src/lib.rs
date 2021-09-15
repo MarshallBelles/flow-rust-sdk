@@ -154,11 +154,22 @@ pub async fn sign_transaction(
     let mut envelope = vec![];
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
-        let encoded_payload = to_bytes(&payload_from_transaction(built_transaction.clone()))?;
+        let encoded_payload: &[u8] = &to_bytes(&payload_from_transaction(built_transaction.clone()))?;
+        let mut domain_tag = b"FLOW-V0.0-user".to_vec();
+        // we need to pad 0s at the end of the domain_tag
+        let mut i: usize = 32;
+        i = i - domain_tag.len();
+        while i > 0 {
+            domain_tag.push(0);
+            i = i - 1;
+        }
+
+        let fully_encoded:Vec<u8> = [&domain_tag, encoded_payload].concat();
+
         payload.push(TransactionSignature {
             address: hex::decode(signer.address).unwrap(),
             key_id: signer.key_id,
-            signature: sign(encoded_payload, signer.private_key)?,
+            signature: sign(fully_encoded, signer.private_key)?,
         });
     }
     // for each of the envelope private keys, sign the transaction
@@ -184,7 +195,7 @@ pub async fn sign_transaction(
     Ok(signed_transaction)
 }
 
-/// execute transaction
+/// Sends the transaction to the blockchain.
 pub async fn execute_transaction(
     network_address: String,
     transaction: Option<Transaction>,
