@@ -113,7 +113,6 @@ pub struct Sign {
 }
 
 /// Don't edit this struct, else it will break signing
-
 #[derive(Serialize, Deserialize, Debug)]
 struct PayloadCanonicalForm {
     Script: Vec<u8>,
@@ -176,7 +175,14 @@ pub async fn sign_transaction(
         });
     }
     // for each of the envelope private keys, sign the transaction
-    for signer in envelope_signatures {}
+    for signer in envelope_signatures {
+        let encoded_payload = to_bytes(&PayloadFromTransaction(built_transaction.clone())).unwrap();
+        envelope.push(TransactionSignature {
+            address: hex::decode(signer.address).unwrap(),
+            key_id: signer.key_id,
+            signature: sign(encoded_payload, signer.private_key, signer.public_key)?,
+        });
+    }
     let signed_transaction = Some(Transaction {
         script: built_transaction.script,
         arguments: built_transaction.arguments,
