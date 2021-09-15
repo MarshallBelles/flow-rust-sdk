@@ -26,7 +26,7 @@ pub mod flow {
 
 // for signing transactions
 use ring::rand;
-use ring::signature::{self, EcdsaKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING};
+use ring::signature::{self, EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING};
 pub extern crate hex;
 use bytes::BytesMut;
 pub extern crate serde_rlp;
@@ -147,11 +147,7 @@ fn sign(
     private_key: String,
 ) -> Result<Vec<u8>, Box<dyn error::Error>> {
     let rng = rand::SystemRandom::new();
-    let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
-        &ECDSA_P256_SHA256_ASN1_SIGNING,
-        &hex::decode(private_key)?,
-        &hex::decode(public_key)?,
-    );
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &hex::decode(private_key)?);
     let key_pair = match key_pair {
         Ok(val) => val,
         Err(error) => panic!("Could not use provided keys: {}", error.description_()),
