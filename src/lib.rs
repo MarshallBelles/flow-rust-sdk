@@ -127,7 +127,7 @@ fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
     let mut proposal_address = proposal_key.address;
     padding(&mut proposal_address, 8);
     let mut ref_block = transaction.reference_block_id;
-    padding(&mut ref_block, 16);
+    padding(&mut ref_block, 32);
     return PayloadCanonicalForm {
         Script: transaction.script,
         Arguments: transaction.arguments,
