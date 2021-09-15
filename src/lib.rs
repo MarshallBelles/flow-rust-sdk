@@ -145,13 +145,17 @@ fn sign(
     message: Vec<u8>,
     public_key: String,
     private_key: String,
-) -> Result<Vec<u8>, ring::error::KeyRejected> {
+) -> Result<Vec<u8>, Box<dyn error::Error>> {
     let rng = rand::SystemRandom::new();
     let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
         &ECDSA_P256_SHA256_FIXED_SIGNING,
-        &hex::decode(private_key).unwrap(),
-        &hex::decode(public_key).unwrap(),
-    )?;
+        &hex::decode(private_key)?,
+        &hex::decode(public_key)?,
+    );
+    let key_pair = match key_pair {
+        Ok(val) => val,
+        Err(error) => panic!("Could not use provided keys: {}", error.description_()),
+    };
     let sig = key_pair.sign(&rng, &message).unwrap();
     Ok(sig.as_ref().to_vec())
 }
@@ -167,21 +171,21 @@ pub async fn sign_transaction(
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
         let encoded_payload =
-            to_bytes(&payload_from_transaction(built_transaction.clone())).unwrap();
+            to_bytes(&payload_from_transaction(built_transaction.clone()))?;
         payload.push(TransactionSignature {
             address: hex::decode(signer.address).unwrap(),
             key_id: signer.key_id,
-            signature: sign(encoded_payload, signer.private_key, signer.public_key).unwrap(),
+            signature: sign(encoded_payload, signer.private_key, signer.public_key)?,
         });
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
         let encoded_payload =
-            to_bytes(&payload_from_transaction(built_transaction.clone())).unwrap();
+            to_bytes(&payload_from_transaction(built_transaction.clone()))?;
         envelope.push(TransactionSignature {
             address: hex::decode(signer.address).unwrap(),
             key_id: signer.key_id,
-            signature: sign(encoded_payload, signer.private_key, signer.public_key).unwrap(),
+            signature: sign(encoded_payload, signer.private_key, signer.public_key)?,
         });
     }
     let signed_transaction = Some(Transaction {
