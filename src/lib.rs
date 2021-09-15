@@ -147,7 +147,7 @@ fn sign(
     private_key: String,
 ) -> Result<Vec<u8>, Box<dyn error::Error>> {
     let rng = rand::SystemRandom::new();
-    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &hex::decode(private_key)?);
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, private_key.as_bytes());
     let key_pair = match key_pair {
         Ok(val) => val,
         Err(error) => panic!("Could not use provided keys: {}", error.description_()),
