@@ -29,7 +29,6 @@ use p256::ecdsa::{signature::Signature, signature::Signer, SigningKey};
 pub extern crate hex;
 pub extern crate serde_rlp;
 use serde::{Deserialize, Serialize};
-use serde_rlp::ser::to_bytes;
 
 // ****************************************************
 // Public Methods
@@ -127,10 +126,12 @@ fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
     let proposal_key = transaction.proposal_key.unwrap();
     let mut proposal_address = proposal_key.address;
     padding(&mut proposal_address, 8);
+    let mut ref_block = transaction.reference_block_id;
+    padding(&mut ref_block, 16);
     return PayloadCanonicalForm {
         Script: transaction.script,
         Arguments: transaction.arguments,
-        ReferenceBlockID: transaction.reference_block_id,
+        ReferenceBlockID: ref_block,
         GasLimit: transaction.gas_limit,
         ProposalKeyAddress: proposal_address,
         ProposalKeyIndex: proposal_key.key_id,
@@ -166,7 +167,7 @@ pub async fn sign_transaction(
     let mut envelope: Vec<TransactionSignature> = vec![];
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
-        let encoded_payload: &[u8] = &to_bytes(&payload_from_transaction(built_transaction.clone()))?;
+        let encoded_payload: &[u8] = &serde_rlp::ser::to_bytes(&payload_from_transaction(built_transaction.clone()))?;
         let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
@@ -183,7 +184,7 @@ pub async fn sign_transaction(
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
-        let encoded_payload: &[u8] = &to_bytes(&payload_from_transaction(built_transaction.clone()))?;
+        let encoded_payload: &[u8] = &serde_rlp::ser::to_bytes(&payload_from_transaction(built_transaction.clone()))?;
         let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
