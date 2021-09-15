@@ -25,16 +25,20 @@ pub mod flow {
 }
 
 // for signing transactions
-pub use p256::ecdsa;
+use ring::rand;
+use ring::signature::{self, EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING};
 pub extern crate hex;
-pub extern crate rlp;
+use bytes::BytesMut;
+pub extern crate serde_rlp;
+use serde::{Deserialize, Serialize};
+use serde_rlp::ser::to_bytes;
 
 // ****************************************************
 // Public Methods
 // ****************************************************
 
-// check the availability of the node at network_address
-// if this times out, it's probably because the endpoint timed out.
+/// check the availability of the node at network_address
+/// if this times out, it's probably because the endpoint timed out.
 pub async fn check_availability(network_address: String) -> Result<(), Box<dyn error::Error>> {
     let mut client = AccessApiClient::connect(network_address).await?;
 
@@ -45,7 +49,7 @@ pub async fn check_availability(network_address: String) -> Result<(), Box<dyn e
     Ok(())
 }
 
-// get_account expects the address and will return the Account or an Err
+/// get_account expects the address and will return the Account or an Err
 pub async fn get_account(
     network_address: String,
     address: String,
@@ -61,7 +65,7 @@ pub async fn get_account(
     Ok(response.into_inner())
 }
 
-// execute_script will attempt to run the script and return the result as T or Error
+/// execute_script will attempt to run the script and return the result as T or Error
 pub async fn execute_script(
     network_address: String,
     script: Vec<u8>,
@@ -75,7 +79,7 @@ pub async fn execute_script(
     Ok(response.into_inner())
 }
 
-// build
+/// build
 pub async fn build_transaction(
     script: Vec<u8>,
     arguments: Vec<Vec<u8>>,
@@ -101,18 +105,78 @@ pub async fn build_transaction(
     })
 }
 
-// sign
+pub struct Sign {
+    address: String,
+    key_id: u32,
+    private_key: String,
+    public_key: String,
+}
+
+/// Don't edit this struct, else it will break signing
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PayloadCanonicalForm {
+    Script: Vec<u8>,
+    Arguments: Vec<Vec<u8>>,
+    ReferenceBlockID: Vec<u8>,
+    GasLimit: u64,
+    ProposalKeyAddress: Vec<u8>,
+    ProposalKeyIndex: u32,
+    ProposalKeySequenceNumber: u64,
+    Payer: Vec<u8>,
+    Authorizers: Vec<Vec<u8>>,
+}
+
+fn PayloadFromTransaction(transaction: Transaction) -> PayloadCanonicalForm {
+    let proposal_key = transaction.proposal_key.unwrap();
+    return PayloadCanonicalForm {
+        Script: transaction.script,
+        Arguments: transaction.arguments,
+        ReferenceBlockID: transaction.reference_block_id,
+        GasLimit: transaction.gas_limit,
+        ProposalKeyAddress: proposal_key.address,
+        ProposalKeyIndex: proposal_key.key_id,
+        ProposalKeySequenceNumber: proposal_key.sequence_number,
+        Payer: transaction.payer,
+        Authorizers: transaction.authorizers,
+    };
+}
+
+fn sign(
+    message: Vec<u8>,
+    public_key: String,
+    private_key: String,
+) -> Result<Vec<u8>, Box<dyn error::Error>> {
+    let rng = rand::SystemRandom::new();
+    let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
+        &ECDSA_P256_SHA256_FIXED_SIGNING,
+        &hex::decode(private_key)?,
+        &hex::decode(public_key)?,
+    )
+    .unwrap();
+    let sig = key_pair.sign(&rng, &message).unwrap();
+    Ok(sig.as_ref().to_vec())
+}
+
+/// sign
 pub async fn sign_transaction(
     built_transaction: Transaction,
-    payload_private_keys: Vec<String>,
-    envelope_private_keys: Vec<String>,
+    payload_signatures: Vec<Sign>,
+    envelope_signatures: Vec<Sign>,
 ) -> Result<Option<Transaction>, Box<dyn error::Error>> {
-    let payload_signatures = vec![];
-    let envelope_signatures = vec![];
+    let mut payload = vec![];
+    let mut envelope = vec![];
     // for each of the payload private keys, sign the transaction
-    for pkey in payload_private_keys {}
+    for signer in payload_signatures {
+        let encoded_payload = to_bytes(&PayloadFromTransaction(built_transaction.clone())).unwrap();
+        payload.push(TransactionSignature {
+            address: hex::decode(signer.address).unwrap(),
+            key_id: signer.key_id,
+            signature: sign(encoded_payload, signer.private_key, signer.public_key)?,
+        });
+    }
     // for each of the envelope private keys, sign the transaction
-    for pkey in envelope_private_keys {}
+    for signer in envelope_signatures {}
     let signed_transaction = Some(Transaction {
         script: built_transaction.script,
         arguments: built_transaction.arguments,
@@ -120,14 +184,14 @@ pub async fn sign_transaction(
         gas_limit: built_transaction.gas_limit,
         proposal_key: built_transaction.proposal_key,
         authorizers: built_transaction.authorizers,
-        payload_signatures: payload_signatures,
-        envelope_signatures: envelope_signatures,
+        payload_signatures: payload,
+        envelope_signatures: envelope,
         payer: built_transaction.payer,
     });
     Ok(signed_transaction)
 }
 
-// execute transaction
+/// execute transaction
 pub async fn execute_transaction(
     network_address: String,
     transaction: Option<Transaction>,
@@ -142,7 +206,7 @@ pub async fn execute_transaction(
     Ok(response.into_inner())
 }
 
-// get transaction result
+/// get transaction result
 pub async fn get_transaction_result(
     network_address: String,
     id: Vec<u8>,
@@ -157,7 +221,7 @@ pub async fn get_transaction_result(
     Ok(response.into_inner())
 }
 
-// get transaction result
+/// get transaction result
 pub async fn get_transaction(
     network_address: String,
     id: Vec<u8>,
@@ -172,7 +236,7 @@ pub async fn get_transaction(
     Ok(response.into_inner())
 }
 
-// get_block accepts either the block_id or block_height. If neither are defined it returns the latest block.
+/// get_block accepts either the block_id or block_height. If neither are defined it returns the latest block.
 pub async fn get_block(
     network_address: String,
     block_id: Option<String>,
@@ -213,7 +277,7 @@ pub async fn get_block(
     }
 }
 
-// retrieve the specified events by type for the given height range
+/// retrieve the specified events by type for the given height range
 pub async fn get_events_for_height_range(
     network_address: String,
     event_type: String,
@@ -230,7 +294,7 @@ pub async fn get_events_for_height_range(
     Ok(response.into_inner())
 }
 
-// retrieve the specified events by type for the given blocks
+/// retrieve the specified events by type for the given blocks
 pub async fn get_events_for_block_ids(
     network_address: String,
     event_type: String,
@@ -245,7 +309,7 @@ pub async fn get_events_for_block_ids(
     Ok(response.into_inner())
 }
 
-// retrieve the specified collections
+/// retrieve the specified collections
 pub async fn get_collection(
     network_address: String,
     collection_id: Vec<u8>,
