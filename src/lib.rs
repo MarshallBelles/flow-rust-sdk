@@ -106,10 +106,10 @@ pub async fn build_transaction(
 }
 
 pub struct Sign {
-    address: String,
-    key_id: u32,
-    private_key: String,
-    public_key: String,
+    pub address: String,
+    pub key_id: u32,
+    pub private_key: String,
+    pub public_key: String,
 }
 
 /// Don't edit this struct, else it will break signing
