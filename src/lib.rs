@@ -125,12 +125,14 @@ struct PayloadCanonicalForm {
 
 fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
     let proposal_key = transaction.proposal_key.unwrap();
+    let mut proposal_address = proposal_key.address;
+    padding(&mut proposal_address, 8);
     return PayloadCanonicalForm {
         Script: transaction.script,
         Arguments: transaction.arguments,
         ReferenceBlockID: transaction.reference_block_id,
         GasLimit: transaction.gas_limit,
-        ProposalKeyAddress: proposal_key.address,
+        ProposalKeyAddress: proposal_address,
         ProposalKeyIndex: proposal_key.key_id,
         ProposalKeySequenceNumber: proposal_key.sequence_number,
         Payer: transaction.payer,
@@ -144,41 +146,56 @@ fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error:
     Ok(signature.as_bytes().to_vec())
 }
 
+fn padding(vec: &mut Vec<u8>, count: usize) {
+    let mut i: usize = count;
+    i = i - vec.len();
+    while i > 0 {
+        vec.push(0);
+        i = i - 1;
+    }
+}
+
 /// sign
 pub async fn sign_transaction(
     built_transaction: Transaction,
     payload_signatures: Vec<Sign>,
     envelope_signatures: Vec<Sign>,
+    domain_tag: Option<String>,
 ) -> Result<Option<Transaction>, Box<dyn error::Error>> {
-    let mut payload = vec![];
-    let mut envelope = vec![];
+    let mut payload: Vec<TransactionSignature> = vec![];
+    let mut envelope: Vec<TransactionSignature> = vec![];
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
         let encoded_payload: &[u8] = &to_bytes(&payload_from_transaction(built_transaction.clone()))?;
-        let mut domain_tag = b"FLOW-V0.0-user".to_vec();
+        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
         // we need to pad 0s at the end of the domain_tag
-        let mut i: usize = 32;
-        i = i - domain_tag.len();
-        while i > 0 {
-            domain_tag.push(0);
-            i = i - 1;
-        }
+        padding(&mut domain_tag, 32);
 
-        let fully_encoded:Vec<u8> = [&domain_tag, encoded_payload].concat();
+        let fully_encoded: Vec<u8> = [&domain_tag, encoded_payload].concat();
+        let mut addr = hex::decode(signer.address).unwrap();
+        padding(&mut addr, 8);
 
         payload.push(TransactionSignature {
-            address: hex::decode(signer.address).unwrap(),
+            address: addr,
             key_id: signer.key_id,
             signature: sign(fully_encoded, signer.private_key)?,
         });
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
-        let encoded_payload = to_bytes(&payload_from_transaction(built_transaction.clone()))?;
+        let encoded_payload: &[u8] = &to_bytes(&payload_from_transaction(built_transaction.clone()))?;
+        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
+        // we need to pad 0s at the end of the domain_tag
+        padding(&mut domain_tag, 32);
+
+        let fully_encoded: Vec<u8> = [&domain_tag, encoded_payload].concat();
+        let mut addr = hex::decode(signer.address).unwrap();
+        padding(&mut addr, 8);
+
         envelope.push(TransactionSignature {
-            address: hex::decode(signer.address).unwrap(),
+            address: addr,
             key_id: signer.key_id,
-            signature: sign(encoded_payload, signer.private_key)?,
+            signature: sign(fully_encoded, signer.private_key)?,
         });
     }
     let signed_transaction = Some(Transaction {
