@@ -126,7 +126,7 @@ struct PayloadCanonicalForm {
     Authorizers: Vec<Vec<u8>>,
 }
 
-fn PayloadFromTransaction(transaction: Transaction) -> PayloadCanonicalForm {
+fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
     let proposal_key = transaction.proposal_key.unwrap();
     return PayloadCanonicalForm {
         Script: transaction.script,
@@ -145,14 +145,13 @@ fn sign(
     message: Vec<u8>,
     public_key: String,
     private_key: String,
-) -> Result<Vec<u8>, Box<dyn error::Error>> {
+) -> Result<Vec<u8>, ring::error::KeyRejected> {
     let rng = rand::SystemRandom::new();
     let key_pair = EcdsaKeyPair::from_private_key_and_public_key(
         &ECDSA_P256_SHA256_FIXED_SIGNING,
-        &hex::decode(private_key)?,
-        &hex::decode(public_key)?,
-    )
-    .unwrap();
+        &hex::decode(private_key).unwrap(),
+        &hex::decode(public_key).unwrap(),
+    )?;
     let sig = key_pair.sign(&rng, &message).unwrap();
     Ok(sig.as_ref().to_vec())
 }
@@ -167,20 +166,22 @@ pub async fn sign_transaction(
     let mut envelope = vec![];
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
-        let encoded_payload = to_bytes(&PayloadFromTransaction(built_transaction.clone())).unwrap();
+        let encoded_payload =
+            to_bytes(&payload_from_transaction(built_transaction.clone())).unwrap();
         payload.push(TransactionSignature {
             address: hex::decode(signer.address).unwrap(),
             key_id: signer.key_id,
-            signature: sign(encoded_payload, signer.private_key, signer.public_key)?,
+            signature: sign(encoded_payload, signer.private_key, signer.public_key).unwrap(),
         });
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
-        let encoded_payload = to_bytes(&PayloadFromTransaction(built_transaction.clone())).unwrap();
+        let encoded_payload =
+            to_bytes(&payload_from_transaction(built_transaction.clone())).unwrap();
         envelope.push(TransactionSignature {
             address: hex::decode(signer.address).unwrap(),
             key_id: signer.key_id,
-            signature: sign(encoded_payload, signer.private_key, signer.public_key)?,
+            signature: sign(encoded_payload, signer.private_key, signer.public_key).unwrap(),
         });
     }
     let signed_transaction = Some(Transaction {
