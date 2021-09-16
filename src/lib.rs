@@ -26,6 +26,7 @@ pub mod flow {
 
 // for signing transactions
 use p256::ecdsa::{signature::Signature, signature::Signer, SigningKey};
+use p256::elliptic_curve::SecretKey;
 pub extern crate hex;
 pub extern crate serde_rlp;
 use serde::{Deserialize, Serialize};
@@ -142,8 +143,9 @@ fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
 }
 
 fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error::Error>> {
-    let signing_key = SigningKey::from_bytes(&hex::decode(private_key).unwrap()).unwrap();
-    let signature = signing_key.sign(&message);
+    let secret_key = SecretKey::from_bytes(hex::decode(private_key).unwrap()).unwrap();
+    let sig_key = SigningKey::from(secret_key);
+    let signature = sig_key.sign(&message);
     Ok(signature.as_bytes().to_vec())
 }
 
