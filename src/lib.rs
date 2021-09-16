@@ -27,6 +27,7 @@ pub mod flow {
 // for signing transactions
 use p256::ecdsa::{signature::Signature, signature::Signer, SigningKey};
 use p256::elliptic_curve::SecretKey;
+use bytes::{Bytes, BytesMut, Buf, BufMut};
 pub extern crate hex;
 pub extern crate serde_rlp;
 use serde::{Deserialize, Serialize};
@@ -112,15 +113,15 @@ pub struct Sign {
 /// Don't edit this struct, else it will break signing
 #[derive(Serialize, Deserialize, Debug)]
 struct PayloadCanonicalForm {
-    Script: Vec<u8>,
-    Arguments: Vec<Vec<u8>>,
-    ReferenceBlockID: Vec<u8>,
+    Script: Bytes,
+    Arguments: Vec<Bytes>,
+    ReferenceBlockID: Bytes,
     GasLimit: u64,
-    ProposalKeyAddress: Vec<u8>,
+    ProposalKeyAddress: Bytes,
     ProposalKeyIndex: u32,
     ProposalKeySequenceNumber: u64,
-    Payer: Vec<u8>,
-    Authorizers: Vec<Vec<u8>>,
+    Payer: Bytes,
+    Authorizers: Vec<Bytes>,
 }
 
 fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
@@ -130,15 +131,15 @@ fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
     let mut ref_block = transaction.reference_block_id;
     padding(&mut ref_block, 32);
     return PayloadCanonicalForm {
-        Script: transaction.script,
-        Arguments: transaction.arguments,
-        ReferenceBlockID: ref_block,
+        Script: Bytes::from(transaction.script),
+        Arguments: transaction.arguments.into_iter().map(|x| Bytes::from(x)).collect(),
+        ReferenceBlockID: Bytes::from(ref_block),
         GasLimit: transaction.gas_limit,
-        ProposalKeyAddress: proposal_address,
+        ProposalKeyAddress: Bytes::from(proposal_address),
         ProposalKeyIndex: proposal_key.key_id,
         ProposalKeySequenceNumber: proposal_key.sequence_number,
-        Payer: transaction.payer,
-        Authorizers: transaction.authorizers,
+        Payer: Bytes::from(transaction.payer),
+        Authorizers: transaction.authorizers.into_iter().map(|x| Bytes::from(x)).collect(),
     };
 }
 
