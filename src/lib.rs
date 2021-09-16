@@ -144,8 +144,7 @@ fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
 }
 
 fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error::Error>> {
-    let secret_key = SecretKey::from_bytes(hex::decode(private_key).unwrap()).unwrap();
-    let sig_key = SigningKey::from(secret_key);
+    let sig_key = SigningKey::from_bytes(&hex::decode(private_key).unwrap()).unwrap();
     let signature = sig_key.sign(&Bytes::from(message));
     Ok(signature.as_bytes().to_vec())
 }
