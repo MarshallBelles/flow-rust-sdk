@@ -25,12 +25,10 @@ pub mod flow {
 }
 
 // for signing transactions
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use p256::ecdsa::{signature::Signature, signature::Signer, SigningKey};
 use p256::elliptic_curve::SecretKey;
 pub extern crate hex;
-pub extern crate serde_rlp;
-use serde::{Deserialize, Serialize};
 extern crate rlp;
 use rlp::*;
 
@@ -112,21 +110,18 @@ pub struct Sign {
     pub private_key: String,
 }
 
-fn payload_from_transaction(transaction: Transaction) -> Vec<u8>{
+fn envelope_from_transaction(transaction: Transaction) -> Vec<u8> {
     let proposal_key = transaction.proposal_key.unwrap();
     let mut proposal_address = proposal_key.address;
     padding(&mut proposal_address, 8);
     let mut ref_block = transaction.reference_block_id;
     padding(&mut ref_block, 32);
-    
     let mut stream = RlpStream::new_list(2);
 
     stream.begin_list(9);
-    
     stream.append(&Bytes::from(transaction.script).to_vec());
-    
     stream.begin_list(transaction.arguments.len());
-    for (i, arg) in transaction.arguments.into_iter().enumerate(){
+    for (_i, arg) in transaction.arguments.into_iter().enumerate() {
         stream.append(&Bytes::from(arg).to_vec());
     }
 
@@ -136,10 +131,9 @@ fn payload_from_transaction(transaction: Transaction) -> Vec<u8>{
     stream.append(&proposal_key.key_id);
     stream.append(&proposal_key.sequence_number);
     stream.append(&Bytes::from(transaction.payer).to_vec());
-    
 
     stream.begin_list(transaction.authorizers.len());
-    for (i, auth) in transaction.authorizers.into_iter().enumerate(){
+    for (_i, auth) in transaction.authorizers.into_iter().enumerate() {
         stream.append(&Bytes::from(auth).to_vec());
     }
 
@@ -147,15 +141,49 @@ fn payload_from_transaction(transaction: Transaction) -> Vec<u8>{
 
     let out = stream.out().to_vec();
 
-    return out
+    return out;
+}
+
+fn payload_from_transaction(transaction: Transaction) -> Vec<u8> {
+    let proposal_key = transaction.proposal_key.unwrap();
+    let mut proposal_address = proposal_key.address;
+    padding(&mut proposal_address, 8);
+    let mut ref_block = transaction.reference_block_id;
+    padding(&mut ref_block, 32);
+    let mut stream = RlpStream::new_list(2);
+
+    stream.begin_list(9);
+    stream.append(&Bytes::from(transaction.script).to_vec());
+    stream.begin_list(transaction.arguments.len());
+    for (_i, arg) in transaction.arguments.into_iter().enumerate() {
+        stream.append(&Bytes::from(arg).to_vec());
+    }
+
+    stream.append(&Bytes::from(ref_block).to_vec());
+    stream.append(&transaction.gas_limit);
+    stream.append(&Bytes::from(proposal_address).to_vec());
+    stream.append(&proposal_key.key_id);
+    stream.append(&proposal_key.sequence_number);
+    stream.append(&Bytes::from(transaction.payer).to_vec());
+
+    stream.begin_list(transaction.authorizers.len());
+    for (_i, auth) in transaction.authorizers.into_iter().enumerate() {
+        stream.append(&Bytes::from(auth).to_vec());
+    }
+
+    stream.begin_list(0);
+
+    let out = stream.out().to_vec();
+
+    return out;
 }
 
 fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error::Error>> {
     let secret_key = SecretKey::from_be_bytes(&hex::decode(private_key)?)?;
     let sig_key = SigningKey::from(secret_key);
     let signature = sig_key.sign(&message);
-    println!("msg {}",hex::encode(message));
-    println!("sig {}",hex::encode(signature.as_bytes()));
+    println!("msg {}", hex::encode(message));
+    println!("sig {}", hex::encode(signature.as_bytes()));
 
     Ok(signature.as_bytes().to_vec())
 }
@@ -174,7 +202,6 @@ pub async fn sign_transaction(
     built_transaction: Transaction,
     payload_signatures: Vec<Sign>,
     envelope_signatures: Vec<Sign>,
-    domain_tag: Option<String>,
 ) -> Result<Option<Transaction>, Box<dyn error::Error>> {
     let mut payload: Vec<TransactionSignature> = vec![];
     let mut envelope: Vec<TransactionSignature> = vec![];
@@ -197,7 +224,7 @@ pub async fn sign_transaction(
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
-        let encoded_payload: &[u8] = &payload_from_transaction(built_transaction.clone());
+        let encoded_payload: &[u8] = &envelope_from_transaction(built_transaction.clone());
         let mut domain_tag: Vec<u8> = b"FLOW-V0.0-transaction".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
@@ -433,7 +460,7 @@ mod tests {
         assert_eq!(true, v["value"]);
     }
     #[tokio::test]
-    async fn transactions_should_build_sign_and_process() {
+    async fn envelope_signature_test() {
         // define transaction, such as to create a new account
         let transaction = b"
             transaction() {
@@ -447,11 +474,21 @@ mod tests {
                 .await
                 .expect("Could not get latest block");
 
+        // get account
+        let acct: Account = get_account(
+            "http://localhost:3569".to_string(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not get account")
+        .account
+        .unwrap();
+
         // setup proposer
         let proposal_key: TransactionProposalKey = TransactionProposalKey {
             address: hex::decode("f8d6e0586b0a20c7").unwrap(),
             key_id: 0,
-            sequence_number: 0,
+            sequence_number: acct.keys[0].sequence_number as u64,
         };
 
         let latest_block_id = latest_block.block.unwrap().id;
@@ -476,7 +513,80 @@ mod tests {
             private_key: "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec"
                 .to_owned(),
         };
-        let signed: Option<Transaction> = sign_transaction(build, vec![], vec![signature], None)
+        let signed: Option<Transaction> = sign_transaction(build, vec![], vec![signature])
+            .await
+            .expect("Could not sign transaction");
+
+        // send to the blockchain
+        let transaction_execution: SendTransactionResponse =
+            execute_transaction("http://localhost:3569".to_string(), signed)
+                .await
+                .expect("Could not execute transaction");
+
+        // get the result of the transaction execution
+        let get_transaction_result: TransactionResultResponse = get_transaction_result(
+            "http://localhost:3569".to_string(),
+            transaction_execution.id,
+        )
+        .await
+        .expect("Could not get transaction result");
+        assert_eq!(0, get_transaction_result.status_code);
+    }
+    #[tokio::test]
+    async fn payload_signature_test() {
+        // define transaction, such as to create a new account
+        let transaction = b"
+            transaction() {
+                prepare(signer: AuthAccount) {
+                    let acct = AuthAccount(payer: signer)
+                }
+            }";
+        // get the latest block for our transaction request
+        let latest_block: BlockResponse =
+            get_block("http://localhost:3569".to_string(), None, None, Some(false))
+                .await
+                .expect("Could not get latest block");
+
+        // get account
+        let acct: Account = get_account(
+            "http://localhost:3569".to_string(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not get account")
+        .account
+        .unwrap();
+
+        // setup proposer
+        let proposal_key: TransactionProposalKey = TransactionProposalKey {
+            address: hex::decode("f8d6e0586b0a20c7").unwrap(),
+            key_id: 0,
+            sequence_number: acct.keys[0].sequence_number as u64,
+        };
+
+        let latest_block_id = latest_block.block.unwrap().id;
+
+        // build the transaction
+        let build: Transaction = build_transaction(
+            transaction.to_vec(),
+            vec![],
+            latest_block_id,
+            1000,
+            proposal_key,
+            ["f8d6e0586b0a20c7".to_string()].to_vec(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not build transaction");
+
+        // sign the transaction
+        let signature = Sign {
+            address: "f8d6e0586b0a20c7".to_owned(),
+            key_id: 0,
+            private_key: "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec"
+                .to_owned(),
+        };
+        let signed: Option<Transaction> = sign_transaction(build, vec![signature], vec![])
             .await
             .expect("Could not sign transaction");
 
