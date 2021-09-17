@@ -25,9 +25,9 @@ pub mod flow {
 }
 
 // for signing transactions
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use p256::ecdsa::{signature::Signature, signature::Signer, SigningKey};
 use p256::elliptic_curve::SecretKey;
-use bytes::{Bytes, BytesMut, Buf, BufMut};
 pub extern crate hex;
 pub extern crate serde_rlp;
 use serde::{Deserialize, Serialize};
@@ -362,9 +362,150 @@ pub async fn get_collection(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use flow::*;
 
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    #[tokio::test]
+    async fn flow_emulator_should_be_running() {
+        check_availability("http://localhost:3569".to_string())
+            .await
+            .expect("Could not connect to localhost:3569");
     }
+
+    #[tokio::test]
+    async fn get_account_should_work() {
+        // get account at address
+        let acct: Account = get_account(
+            "http://localhost:3569".to_string(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not connect to localhost:3569")
+        .account
+        .expect("Account could not be obtained");
+        assert_eq!("f8d6e0586b0a20c7", hex::encode(acct.address));
+    }
+
+    #[tokio::test]
+    async fn execute_script_should_work() {
+        let script = b"
+            import Crypto
+
+            pub fun main(): Bool {
+                let keyList = Crypto.KeyList()
+            
+                let publicKeyA = PublicKey(
+                    publicKey:
+                        \"ef100c2a8d04de602cd59897e08001cf57ca153cb6f9083918cde1ec7de77418a2c236f7899b3f786d08a1b4592735e3a7461c3e933f420cf9babe350abe0c5a\".decodeHex(),
+                    signatureAlgorithm: SignatureAlgorithm.ECDSA_P256
+                )
+                keyList.add(
+                    publicKeyA,
+                    hashAlgorithm: HashAlgorithm.SHA3_256,
+                    weight: 1.0
+                )
+            
+                let signatureSet = [
+                    Crypto.KeyListSignature(
+                        keyIndex: 0,
+                        signature:
+                            \"12adbf7d71d8ba2febf7922b001a9950248aba40300f23ee9922fafb39979af72ed50b752577d81dfec406151e2ca8bbedd220d9a0bb61b11e7017326c46daca\".decodeHex()
+                    )
+                ]
+            
+                let signedData = \"68656c6c6f776f726c64\".decodeHex()
+            
+                let isValid = keyList.verify(
+                    signatureSet: signatureSet,
+                    signedData: signedData
+                )
+                return isValid;
+            }";
+
+        // Send script to the blockchain
+        let script_results: ExecuteScriptResponse =
+            execute_script("http://localhost:3569".to_string(), script.to_vec())
+                .await
+                .expect("Could not connect to localhost:3569");
+        let v: serde_json::Value = serde_json::from_str(
+            &String::from_utf8(script_results.value).expect("Could not get script_results"),
+        )
+        .expect("Could not get script_results");
+        assert_eq!(true, v["value"]);
+    }
+    #[tokio::test]
+    async fn transactions_should_build_sign_and_process() {
+        // define transaction, such as to create a new account
+        let transaction = b"
+            transaction() {
+                prepare(signer: AuthAccount) {
+                    let acct = AuthAccount(payer: signer)
+                }
+            }";
+        // get the latest block for our transaction request
+        let latest_block: BlockResponse =
+            get_block("http://localhost:3569".to_string(), None, None, Some(false))
+                .await
+                .expect("Could not get latest block");
+
+        // setup proposer
+        let proposal_key: TransactionProposalKey = TransactionProposalKey {
+            address: hex::decode("f8d6e0586b0a20c7").unwrap(),
+            key_id: 0,
+            sequence_number: 0,
+        };
+
+        let latest_block_id = latest_block.block.unwrap().id;
+
+        // build the transaction
+        let build: Transaction = build_transaction(
+            transaction.to_vec(),
+            vec![],
+            latest_block_id,
+            1000,
+            proposal_key,
+            ["f8d6e0586b0a20c7".to_string()].to_vec(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not build transaction");
+
+        // sign the transaction
+        let signature = Sign {
+            address: "f8d6e0586b0a20c7".to_owned(),
+            key_id: 0,
+            private_key: "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec"
+                .to_owned(),
+        };
+        let signed: Option<Transaction> = sign_transaction(build, vec![], vec![signature], None)
+            .await
+            .expect("Could not sign transaction");
+
+        // send to the blockchain
+        let transaction_execution: SendTransactionResponse =
+            execute_transaction("http://localhost:3569".to_string(), signed)
+                .await
+                .expect("Could not execute transaction");
+
+        // get the result of the transaction execution
+        let get_transaction_result: TransactionResultResponse = get_transaction_result(
+            "http://localhost:3569".to_string(),
+            transaction_execution.id,
+        )
+        .await
+        .expect("Could not get transaction result");
+        assert_eq!(0, get_transaction_result.status_code);
+    }
+    #[tokio::test]
+    async fn get_block_should_work() {
+        let _latest_block: BlockResponse =
+            get_block("http://localhost:3569".to_string(), None, None, Some(false))
+                .await
+                .expect("Could not get latest block");
+    }
+    #[tokio::test]
+    async fn get_events_for_height_range_should_work() {}
+    #[tokio::test]
+    async fn get_events_for_block_ids_should_work() {}
+    #[tokio::test]
+    async fn get_collection_should_work() {}
 }
