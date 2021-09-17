@@ -1,6 +1,6 @@
 [package]
 name = "flow-rust-sdk"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2018"
 
 [dependencies]
@@ -15,6 +15,10 @@ rand_core = "0.6.3"
 p256 = {git = "https://github.com/MarshallBelles/elliptic-curves.git", branch = "master", features= ["ecdsa"]}
 ecdsa = { git = "https://github.com/MarshallBelles/signatures.git" }
 elliptic-curve = { git = "https://github.com/MarshallBelles/traits.git" }
+
+[dev-dependencies]
+tokio = { version = "1.11.0", features = ["full"] }
+serde_json = "1.0.68"
 
 [build-dependencies]
 tonic-build = "0.5"
