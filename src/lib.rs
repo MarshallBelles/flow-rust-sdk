@@ -171,7 +171,7 @@ pub async fn sign_transaction(
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
         let encoded_payload: &[u8] = &serde_rlp::ser::to_bytes(&payload_from_transaction(built_transaction.clone()))?;
-        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
+        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-transaction".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
 
@@ -188,7 +188,7 @@ pub async fn sign_transaction(
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
         let encoded_payload: &[u8] = &serde_rlp::ser::to_bytes(&payload_from_transaction(built_transaction.clone()))?;
-        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
+        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-transaction".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
 
