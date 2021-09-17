@@ -110,7 +110,7 @@ pub struct Sign {
     pub private_key: String,
 }
 
-fn envelope_from_transaction(transaction: Transaction) -> Vec<u8> {
+fn envelope_from_transaction(transaction: Transaction, payload_signatures: &Vec<TransactionSignature>) -> Vec<u8> {
     let proposal_key = transaction.proposal_key.unwrap();
     let mut proposal_address = proposal_key.address;
     padding(&mut proposal_address, 8);
@@ -224,7 +224,7 @@ pub async fn sign_transaction(
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
-        let encoded_payload: &[u8] = &envelope_from_transaction(built_transaction.clone());
+        let encoded_payload: &[u8] = &envelope_from_transaction(built_transaction.clone(), &payload);
         let mut domain_tag: Vec<u8> = b"FLOW-V0.0-transaction".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);

@@ -11,12 +11,12 @@ Here's what works right now:
 * execute_transaction : Sends a built and signed transcation to the blockchain
 * get_transaction_result : Checks the status / result of a transaction
 * get_block : Gets the latest block by default
+* sign_transaction : Single auth transactions with one envelope signature
 
 
 Here's what doesn't work:
 
-* sign_transaction : I'm still working on the ECDSA signature process
-
+* sign_transaction : Multiple auth transactions, with more than one signer / payload signatures
 
 
 List of To-Do (incomplete):
@@ -83,46 +83,75 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", v["value"]);
 
     // define transaction, such as to create a new account
-    let transaction = b"
-    transaction() {
-        prepare(signer: AuthAccount) {
-            let acct = AuthAccount(payer: signer)
-        }
-    }";
+        let transaction = b"
+            transaction() {
+                prepare(signer: AuthAccount) {
+                    let acct = AuthAccount(payer: signer)
+                }
+            }";
+        // get the latest block for our transaction request
+        let latest_block: BlockResponse =
+            get_block("http://localhost:3569".to_string(), None, None, Some(false))
+                .await
+                .expect("Could not get latest block");
 
-    // get the latest block for our transaction request
-    let latest_block: BlockResponse = get_block("http://localhost:3569".to_string(), None, None, Some(false)).await?;
+        // get account
+        let acct: Account = get_account(
+            "http://localhost:3569".to_string(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not get account")
+        .account
+        .unwrap();
 
-    // setup proposer
-    let proposal_key: TransactionProposalKey = TransactionProposalKey {
-        address: hex::decode("f8d6e0586b0a20c7").unwrap(),
-        key_id: 0,
-        sequence_number: 0,
-    };
+        // setup proposer
+        let proposal_key: TransactionProposalKey = TransactionProposalKey {
+            address: hex::decode("f8d6e0586b0a20c7").unwrap(),
+            key_id: 0,
+            sequence_number: acct.keys[0].sequence_number as u64,
+        };
 
-    // build the transaction
-    let build: Transaction = build_transaction(
-        transaction.to_vec(),
-        vec![],
-        latest_block.block.unwrap().id,
-        1000,
-        proposal_key,
-        ["f8d6e0586b0a20c7".to_string()].to_vec(),
-        "f8d6e0586b0a20c7".to_string(),
-    )
-    .await?;
+        let latest_block_id = latest_block.block.unwrap().id;
 
-    // sign the transaction
-    let signed: Option<Transaction> = sign_transaction(build, [TransactionSignature {address: hex::decode("f8d6e0586b0a20c7").unwrap(), key_id: 0, signature: [].to_vec()}].to_vec(), [].to_vec()).await?;
+        // build the transaction
+        let build: Transaction = build_transaction(
+            transaction.to_vec(),
+            vec![],
+            latest_block_id,
+            1000,
+            proposal_key,
+            ["f8d6e0586b0a20c7".to_string()].to_vec(),
+            "f8d6e0586b0a20c7".to_string(),
+        )
+        .await
+        .expect("Could not build transaction");
 
-    // send to the blockchain
-    let transaction_execution: SendTransactionResponse =
-        execute_transaction("http://localhost:3569".to_string(), signed).await?;
+        // sign the transaction
+        let signature = Sign {
+            address: "f8d6e0586b0a20c7".to_owned(),
+            key_id: 0,
+            private_key: "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec"
+                .to_owned(),
+        };
+        let signed: Option<Transaction> = sign_transaction(build, vec![], vec![signature])
+            .await
+            .expect("Could not sign transaction");
 
-    // get the result of the transaction execution
-    let get_transaction_result: TransactionResultResponse = get_transaction_result("http://localhost:3569".to_string(), transaction_execution.id).await?;
+        // send to the blockchain
+        let transaction_execution: SendTransactionResponse =
+            execute_transaction("http://localhost:3569".to_string(), signed)
+                .await
+                .expect("Could not execute transaction");
 
-    println!("{:?}", &get_transaction_result);
+        // get the result of the transaction execution
+        let get_transaction_result: TransactionResultResponse = get_transaction_result(
+            "http://localhost:3569".to_string(),
+            transaction_execution.id,
+        )
+        .await
+        .expect("Could not get transaction result");
+        assert_eq!(0, get_transaction_result.status_code);
     Ok(())
 }
 ```
