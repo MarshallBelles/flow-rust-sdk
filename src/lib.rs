@@ -31,6 +31,8 @@ use bytes::{Bytes, BytesMut, Buf, BufMut};
 pub extern crate hex;
 pub extern crate serde_rlp;
 use serde::{Deserialize, Serialize};
+extern crate rlp;
+use rlp::*;
 
 // ****************************************************
 // Public Methods
@@ -110,43 +112,51 @@ pub struct Sign {
     pub private_key: String,
 }
 
-/// Don't edit this struct, else it will break signing
-#[derive(Serialize, Deserialize, Debug)]
-struct PayloadCanonicalForm {
-    Script: Bytes,
-    Arguments: Vec<Bytes>,
-    ReferenceBlockID: Bytes,
-    GasLimit: u64,
-    ProposalKeyAddress: Bytes,
-    ProposalKeyIndex: u32,
-    ProposalKeySequenceNumber: u64,
-    Payer: Bytes,
-    Authorizers: Vec<Bytes>,
-}
-
-fn payload_from_transaction(transaction: Transaction) -> PayloadCanonicalForm {
+fn payload_from_transaction(transaction: Transaction) -> Vec<u8>{
     let proposal_key = transaction.proposal_key.unwrap();
     let mut proposal_address = proposal_key.address;
     padding(&mut proposal_address, 8);
     let mut ref_block = transaction.reference_block_id;
     padding(&mut ref_block, 32);
-    return PayloadCanonicalForm {
-        Script: Bytes::from(transaction.script),
-        Arguments: transaction.arguments.into_iter().map(|x| Bytes::from(x)).collect(),
-        ReferenceBlockID: Bytes::from(ref_block),
-        GasLimit: transaction.gas_limit,
-        ProposalKeyAddress: Bytes::from(proposal_address),
-        ProposalKeyIndex: proposal_key.key_id,
-        ProposalKeySequenceNumber: proposal_key.sequence_number,
-        Payer: Bytes::from(transaction.payer),
-        Authorizers: transaction.authorizers.into_iter().map(|x| Bytes::from(x)).collect(),
-    };
+    
+    let mut stream = RlpStream::new_list(2);
+
+    stream.begin_list(9);
+    
+    stream.append(&Bytes::from(transaction.script).to_vec());
+    
+    stream.begin_list(transaction.arguments.len());
+    for (i, arg) in transaction.arguments.into_iter().enumerate(){
+        stream.append(&Bytes::from(arg).to_vec());
+    }
+
+    stream.append(&Bytes::from(ref_block).to_vec());
+    stream.append(&transaction.gas_limit);
+    stream.append(&Bytes::from(proposal_address).to_vec());
+    stream.append(&proposal_key.key_id);
+    stream.append(&proposal_key.sequence_number);
+    stream.append(&Bytes::from(transaction.payer).to_vec());
+    
+
+    stream.begin_list(transaction.authorizers.len());
+    for (i, auth) in transaction.authorizers.into_iter().enumerate(){
+        stream.append(&Bytes::from(auth).to_vec());
+    }
+
+    stream.begin_list(0);
+
+    let out = stream.out().to_vec();
+
+    return out
 }
 
 fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error::Error>> {
     let secret_key = SecretKey::from_be_bytes(&hex::decode(private_key)?)?;
     let sig_key = SigningKey::from(secret_key);
     let signature = sig_key.sign(&message);
+    println!("msg {}",hex::encode(message));
+    println!("sig {}",hex::encode(signature.as_bytes()));
+
     Ok(signature.as_bytes().to_vec())
 }
 
@@ -170,8 +180,8 @@ pub async fn sign_transaction(
     let mut envelope: Vec<TransactionSignature> = vec![];
     // for each of the payload private keys, sign the transaction
     for signer in payload_signatures {
-        let encoded_payload: &[u8] = &serde_rlp::ser::to_bytes(&payload_from_transaction(built_transaction.clone()))?;
-        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
+        let encoded_payload: &[u8] = &payload_from_transaction(built_transaction.clone());
+        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-transaction".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
 
@@ -187,8 +197,8 @@ pub async fn sign_transaction(
     }
     // for each of the envelope private keys, sign the transaction
     for signer in envelope_signatures {
-        let encoded_payload: &[u8] = &serde_rlp::ser::to_bytes(&payload_from_transaction(built_transaction.clone()))?;
-        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-user".to_vec();
+        let encoded_payload: &[u8] = &payload_from_transaction(built_transaction.clone());
+        let mut domain_tag: Vec<u8> = b"FLOW-V0.0-transaction".to_vec();
         // we need to pad 0s at the end of the domain_tag
         padding(&mut domain_tag, 32);
 
