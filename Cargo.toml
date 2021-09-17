@@ -1,6 +1,6 @@
 [package]
 name = "flow-rust-sdk"
-version = "0.5.9"
+version = "0.6.0"
 edition = "2018"
 
 [dependencies]
@@ -13,10 +13,8 @@ serde-rlp = "0.1.4"
 serde = { version = "1.0", features = ["derive"] }
 rand_core = "0.6.3"
 p256 = {git = "https://github.com/MarshallBelles/elliptic-curves.git", branch = "master", features= ["ecdsa"]}
-
-[patch.crates-io]
-ecdsa = { git = "https://github.com/RustCrypto/signatures.git" }
-elliptic-curve = { git = "https://github.com/RustCrypto/traits.git" }
+ecdsa = { git = "https://github.com/MarshallBelles/signatures.git" }
+elliptic-curve = { git = "https://github.com/MarshallBelles/traits.git" }
 
 [build-dependencies]
 tonic-build = "0.5"
