@@ -11,12 +11,7 @@ Here's what works right now:
 * execute_transaction : Sends a built and signed transcation to the blockchain
 * get_transaction_result : Checks the status / result of a transaction
 * get_block : Gets the latest block by default
-* sign_transaction : Single auth transactions with one envelope signature
-
-
-Here's what doesn't work:
-
-* sign_transaction : Multiple auth transactions, with more than one signer / payload signatures
+* sign_transaction : Signs the provided transaction.
 
 
 List of To-Do (incomplete):
@@ -122,21 +117,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             1000,
             proposal_key,
             ["f8d6e0586b0a20c7".to_string()].to_vec(),
-            "f8d6e0586b0a20c7".to_string(),
+            "eb179c27144f783c".to_string(),
         )
         .await
         .expect("Could not build transaction");
 
         // sign the transaction
-        let signature = Sign {
+        let authorizer = Sign {
             address: "f8d6e0586b0a20c7".to_owned(),
             key_id: 0,
             private_key: "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec"
                 .to_owned(),
         };
-        let signed: Option<Transaction> = sign_transaction(build, vec![], vec![signature])
-            .await
-            .expect("Could not sign transaction");
+        // payer always signs the envelope
+        let payer = Sign {
+            address: "eb179c27144f783c".to_owned(),
+            key_id: 0,
+            private_key: "7cc3cac310c24e0bbd6a471b172fd306cf1e12502026a6ec390178a56ca70267"
+                .to_owned(),
+        };
+        let signed: Option<Transaction> =
+            sign_transaction(build, vec![&authorizer], vec![&payer])
+                .await
+                .expect("Could not sign transaction");
 
         // send to the blockchain
         let transaction_execution: SendTransactionResponse =

@@ -275,25 +275,7 @@ pub async fn execute_transaction(
     // send to blockchain
     let mut client = AccessApiClient::connect(network_address.clone()).await?;
 
-    // verify proposal key sequence
-    let mut t = transaction.unwrap();
-
-    let mut prop_key = t.proposal_key.unwrap();
-
-    let account: flow::Account = get_account(network_address, hex::encode(prop_key.address.to_vec()))
-        .await?
-        .account
-        .unwrap();
-
-    let sequence_number = account.keys[prop_key.key_id as usize].sequence_number as u64;
-
-    prop_key.sequence_number = sequence_number;
-
-    t.proposal_key = Some(prop_key);
-
-    let request = tonic::Request::new(SendTransactionRequest {
-        transaction: Some(t),
-    });
+    let request = tonic::Request::new(SendTransactionRequest { transaction });
 
     let response = client.send_transaction(request).await?;
 
