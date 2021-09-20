@@ -38,8 +38,8 @@ use rlp::*;
 
 /// check the availability of the node at network_address
 /// if this times out, it's probably because the endpoint timed out.
-pub async fn check_availability(network_address: String) -> Result<(), Box<dyn error::Error>> {
-    let mut client = AccessApiClient::connect(network_address).await?;
+pub async fn check_availability(network_address: &String) -> Result<(), Box<dyn error::Error>> {
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
 
     let request = tonic::Request::new(PingRequest {});
 
@@ -50,13 +50,13 @@ pub async fn check_availability(network_address: String) -> Result<(), Box<dyn e
 
 /// get_account expects the address and will return the Account or an Err
 pub async fn get_account(
-    network_address: String,
-    address: String,
+    network_address: &String,
+    account_address: String,
 ) -> Result<AccountResponse, Box<dyn error::Error>> {
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
 
     let request = tonic::Request::new(GetAccountAtLatestBlockRequest {
-        address: hex::decode(address).unwrap(),
+        address: hex::decode(account_address).unwrap(),
     });
 
     let response = client.get_account_at_latest_block(request).await?;
@@ -66,10 +66,10 @@ pub async fn get_account(
 
 /// execute_script will attempt to run the script and return the result as T or Error
 pub async fn execute_script(
-    network_address: String,
+    network_address: &String,
     script: Vec<u8>,
 ) -> Result<ExecuteScriptResponse, Box<dyn error::Error>> {
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
 
     let request = tonic::Request::new(ExecuteScriptAtLatestBlockRequest { script });
 
@@ -268,8 +268,8 @@ pub async fn sign_transaction(
 }
 
 /// Sends the transaction to the blockchain.
-pub async fn execute_transaction(
-    network_address: String,
+pub async fn send_transaction(
+    network_address: &String,
     transaction: Option<Transaction>,
 ) -> Result<SendTransactionResponse, Box<dyn error::Error>> {
     // send to blockchain
@@ -284,11 +284,11 @@ pub async fn execute_transaction(
 
 /// get transaction result
 pub async fn get_transaction_result(
-    network_address: String,
+    network_address: &String,
     id: Vec<u8>,
 ) -> Result<TransactionResultResponse, Box<dyn error::Error>> {
     // send to blockchain
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
 
     let request = tonic::Request::new(GetTransactionRequest { id });
 
@@ -299,11 +299,11 @@ pub async fn get_transaction_result(
 
 /// get transaction result
 pub async fn get_transaction(
-    network_address: String,
+    network_address: &String,
     id: Vec<u8>,
 ) -> Result<TransactionResponse, Box<dyn error::Error>> {
     // send to blockchain
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
 
     let request = tonic::Request::new(GetTransactionRequest { id });
 
@@ -314,14 +314,14 @@ pub async fn get_transaction(
 
 /// get_block accepts either the block_id or block_height. If neither are defined it returns the latest block.
 pub async fn get_block(
-    network_address: String,
+    network_address: &String,
     block_id: Option<String>,
     block_height: Option<u64>,
     is_sealed: Option<bool>,
 ) -> Result<BlockResponse, Box<dyn error::Error>> {
     if block_id.is_some() {
         // IF block_id, use this
-        let mut client = AccessApiClient::connect(network_address).await?;
+        let mut client = AccessApiClient::connect(network_address.clone()).await?;
         let request = tonic::Request::new(GetBlockByIdRequest {
             id: block_id.unwrap().as_bytes().to_vec(),
         });
@@ -329,7 +329,7 @@ pub async fn get_block(
         Ok(response.into_inner())
     } else if block_height.is_some() {
         // else IF block_height, use that
-        let mut client = AccessApiClient::connect(network_address).await?;
+        let mut client = AccessApiClient::connect(network_address.clone()).await?;
         let request = tonic::Request::new(GetBlockByHeightRequest {
             height: block_height.unwrap(),
         });
@@ -338,14 +338,14 @@ pub async fn get_block(
     } else {
         // else, just get latest block
         if is_sealed.is_some() {
-            let mut client = AccessApiClient::connect(network_address).await?;
+            let mut client = AccessApiClient::connect(network_address.clone()).await?;
             let request = tonic::Request::new(GetLatestBlockRequest {
                 is_sealed: is_sealed.unwrap(),
             });
             let response = client.get_latest_block(request).await?;
             Ok(response.into_inner())
         } else {
-            let mut client = AccessApiClient::connect(network_address).await?;
+            let mut client = AccessApiClient::connect(network_address.clone()).await?;
             let request = tonic::Request::new(GetLatestBlockRequest { is_sealed: false });
             let response = client.get_latest_block(request).await?;
             Ok(response.into_inner())
@@ -355,12 +355,12 @@ pub async fn get_block(
 
 /// retrieve the specified events by type for the given height range
 pub async fn get_events_for_height_range(
-    network_address: String,
+    network_address: &String,
     event_type: String,
     start_height: u64,
     end_height: u64,
 ) -> Result<EventsResponse, Box<dyn error::Error>> {
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
     let request = tonic::Request::new(GetEventsForHeightRangeRequest {
         r#type: event_type,
         start_height,
@@ -372,11 +372,11 @@ pub async fn get_events_for_height_range(
 
 /// retrieve the specified events by type for the given blocks
 pub async fn get_events_for_block_ids(
-    network_address: String,
+    network_address: &String,
     event_type: String,
     ids: Vec<Vec<u8>>,
 ) -> Result<EventsResponse, Box<dyn error::Error>> {
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
     let request = tonic::Request::new(GetEventsForBlockIdsRequest {
         r#type: event_type,
         block_ids: ids,
@@ -387,13 +387,178 @@ pub async fn get_events_for_block_ids(
 
 /// retrieve the specified collections
 pub async fn get_collection(
-    network_address: String,
+    network_address: &String,
     collection_id: Vec<u8>,
 ) -> Result<CollectionResponse, Box<dyn error::Error>> {
-    let mut client = AccessApiClient::connect(network_address).await?;
+    let mut client = AccessApiClient::connect(network_address.clone()).await?;
     let request = tonic::Request::new(GetCollectionByIdRequest { id: collection_id });
     let response = client.get_collection_by_id(request).await?;
     Ok(response.into_inner())
+}
+
+// ****************************************************
+// Utility Functionality
+// ****************************************************
+
+use serde::Serialize;
+use serde_json::{json, Value};
+use tokio::time::{sleep, Duration};
+
+#[derive(Serialize)]
+pub struct Argument<T> {
+    r#type: String,
+    value: T,
+}
+
+impl Argument<Vec<Value>> {
+    pub fn array(values: Vec<Value>) -> Argument<Vec<Value>> {
+        return Argument {
+            r#type: "Array".to_string(),
+            value: values,
+        };
+    }
+    pub fn dictionary(values: Vec<(String, String)>) -> Argument<Vec<Value>> {
+        return Argument {
+            r#type: "Dictionary".to_string(),
+            value: values
+                .into_iter()
+                .map(|(x, y)| json!({"Key":x, "Value":y}))
+                .collect(),
+        };
+    }
+}
+
+impl Argument<String> {
+    pub fn string(value: String) -> Argument<String> {
+        return Argument {
+            r#type: "String".to_string(),
+            value,
+        };
+    }
+}
+
+fn process_keys_args(account_keys: Vec<String>) -> Argument<Vec<Value>> {
+    // do special processing for the keys, wrapping with algo, hash, and weight information:
+    // algo: ECDSA_P256
+    // hash: SHA3_256
+    // weight: 1000
+    return Argument::array(
+        account_keys
+            .into_iter()
+            .map(|x| json!(Argument::string(format!("f847b840{}02038203e8", x))))
+            .collect::<Vec<Value>>(),
+    );
+}
+
+pub async fn create_account(
+    network_address: &String,
+    account_keys: Vec<String>,
+    payer: &String,
+    payer_private_key: &String,
+    key_id: u32,
+) -> Result<flow::Account, Box<dyn error::Error>> {
+    let create_account_template = b"
+    transaction(publicKeys: [String], contracts: {String: String}) {
+        prepare(signer: AuthAccount) {
+            let acct = AuthAccount(payer: signer)
+    
+            for key in publicKeys {
+                acct.addPublicKey(key.decodeHex())
+            }
+    
+            for contract in contracts.keys {
+                acct.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+            }
+        }
+    }";
+
+    let latest_block: BlockResponse = get_block(network_address, None, None, Some(false)).await?;
+
+    let account: flow::Account = get_account(network_address, payer.clone())
+        .await?
+        .account
+        .unwrap();
+
+    let proposer = TransactionProposalKey {
+        address: hex::decode(payer).unwrap(),
+        key_id,
+        sequence_number: account.keys[key_id as usize].sequence_number as u64,
+    };
+
+    let keys_arg = process_keys_args(account_keys);
+    // empty contracts for now - will implement in the future
+    let contracts_arg = Argument::dictionary(vec![]);
+
+    let keys_arg = json!(keys_arg);
+    let contracts_arg = json!(contracts_arg);
+
+    let transaction: Transaction = build_transaction(
+        create_account_template.to_vec(),
+        vec![
+            serde_json::to_vec(&keys_arg)?,
+            serde_json::to_vec(&contracts_arg)?,
+        ],
+        latest_block.block.unwrap().id,
+        1000,
+        proposer,
+        vec![payer.clone()],
+        payer.clone(),
+    )
+    .await?;
+
+    let signature = Sign {
+        address: payer.clone(),
+        key_id,
+        private_key: payer_private_key.clone(),
+    };
+
+    let transaction: Option<Transaction> =
+        sign_transaction(transaction, vec![], vec![&signature]).await?;
+
+    let transaction: SendTransactionResponse =
+        send_transaction(network_address, transaction).await?;
+
+    // poll for transaction completion
+    let mut time: u64 = 50;
+    let mut i = 0;
+    println!("{}", hex::encode(transaction.id.to_vec()));
+    while i < 50 {
+        i = i + 1;
+        sleep(Duration::from_millis(time)).await;
+        let res = get_transaction_result(network_address, transaction.id.to_vec()).await?;
+        match res.status {
+            0 | 1 | 2 | 3 => {
+                time = time + 200;
+            }
+            4 => {
+                let new_account_address: flow::Event = res
+                    .events
+                    .into_iter()
+                    .filter(|x| x.r#type == "flow.AccountCreated")
+                    .collect::<Vec<flow::Event>>()
+                    .pop()
+                    .unwrap();
+                let payload: Value = serde_json::from_slice(&new_account_address.payload)?;
+                let address: String = payload["value"]["fields"][0]["value"]["value"]
+                    .to_string()
+                    .split_at(3)
+                    .1
+                    .to_string()
+                    .split_at(16)
+                    .0
+                    .to_string();
+                let acct: flow::Account = get_account(network_address, address)
+                    .await?
+                    .account
+                    .expect("could not get newly created account");
+                return Ok(acct);
+            }
+            _ => {
+                return Err("Cadence Runtime Error")?;
+            }
+        }
+    }
+    return Err("Could not produce result")?;
 }
 
 // ****************************************************
@@ -403,167 +568,51 @@ pub async fn get_collection(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flow::*;
 
     #[tokio::test]
-    async fn flow_emulator_should_be_running() {
-        check_availability("http://localhost:3569".to_string())
-            .await
-            .expect("Could not connect to localhost:3569");
-    }
+    async fn comprehensive_usage_case() {
+        // let's first create an account
 
-    #[tokio::test]
-    async fn get_account_should_work() {
-        // get account at address
-        let acct: Account = get_account(
-            "http://localhost:3569".to_string(),
-            "f8d6e0586b0a20c7".to_string(),
+        // create the public and private keys
+
+        // TODO
+
+        // create the account
+
+        let network_address = "http://localhost:3569".to_string();
+        let payer = "f8d6e0586b0a20c7".to_string();
+        let payer_private_key =
+            "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec".to_string();
+
+        let acct = create_account(
+            &network_address,
+            vec!["bf891e8b117863579c22502311884e0a838930722cd136b96e913e6f7d60d647afcfeff7bb95bb30b0a3a5819f01575d5cd93690aa93b1f567136b67a3386923".to_string()],
+            &payer,
+            &payer_private_key,
+            0,
         )
         .await
-        .expect("Could not connect to localhost:3569")
-        .account
-        .expect("Account could not be obtained");
-        assert_eq!("f8d6e0586b0a20c7", hex::encode(acct.address));
+        .expect("Could not create account");
+        println!("{:?}", acct);
+
+        // create a token contract
+
+        // TODO
+
+        // add contract to the newly created account
+
+        // TODO
+
+        // execute minting transaction
+
+        // TODO
+
+        // trade token for flow transaction
+
+        // TODO
+
+        // verify new balances
+
+        // TODO
     }
-
-    #[tokio::test]
-    async fn execute_script_should_work() {
-        let script = b"
-            import Crypto
-
-            pub fun main(): Bool {
-                let keyList = Crypto.KeyList()
-            
-                let publicKeyA = PublicKey(
-                    publicKey:
-                        \"ef100c2a8d04de602cd59897e08001cf57ca153cb6f9083918cde1ec7de77418a2c236f7899b3f786d08a1b4592735e3a7461c3e933f420cf9babe350abe0c5a\".decodeHex(),
-                    signatureAlgorithm: SignatureAlgorithm.ECDSA_P256
-                )
-                keyList.add(
-                    publicKeyA,
-                    hashAlgorithm: HashAlgorithm.SHA3_256,
-                    weight: 1.0
-                )
-            
-                let signatureSet = [
-                    Crypto.KeyListSignature(
-                        keyIndex: 0,
-                        signature:
-                            \"12adbf7d71d8ba2febf7922b001a9950248aba40300f23ee9922fafb39979af72ed50b752577d81dfec406151e2ca8bbedd220d9a0bb61b11e7017326c46daca\".decodeHex()
-                    )
-                ]
-            
-                let signedData = \"68656c6c6f776f726c64\".decodeHex()
-            
-                let isValid = keyList.verify(
-                    signatureSet: signatureSet,
-                    signedData: signedData
-                )
-                return isValid;
-            }";
-
-        // Send script to the blockchain
-        let script_results: ExecuteScriptResponse =
-            execute_script("http://localhost:3569".to_string(), script.to_vec())
-                .await
-                .expect("Could not connect to localhost:3569");
-        let v: serde_json::Value = serde_json::from_str(
-            &String::from_utf8(script_results.value).expect("Could not get script_results"),
-        )
-        .expect("Could not get script_results");
-        assert_eq!(true, v["value"]);
-    }
-    #[tokio::test]
-    async fn comprehensive_signature_test() {
-        // define transaction, such as to create a new account
-        let transaction = b"
-            transaction() {
-                prepare(signer: AuthAccount) {
-                    let acct = AuthAccount(payer: signer)
-                }
-            }";
-        // get the latest block for our transaction request
-        let latest_block: BlockResponse =
-            get_block("http://localhost:3569".to_string(), None, None, Some(false))
-                .await
-                .expect("Could not get latest block");
-
-        // get account
-        let acct: Account = get_account(
-            "http://localhost:3569".to_string(),
-            "f8d6e0586b0a20c7".to_string(),
-        )
-        .await
-        .expect("Could not get account")
-        .account
-        .unwrap();
-
-        // setup proposer
-        let proposal_key: TransactionProposalKey = TransactionProposalKey {
-            address: hex::decode("f8d6e0586b0a20c7").unwrap(),
-            key_id: 0,
-            sequence_number: acct.keys[0].sequence_number as u64,
-        };
-
-        let latest_block_id = latest_block.block.unwrap().id;
-
-        // build the transaction
-        let build: Transaction = build_transaction(
-            transaction.to_vec(),
-            vec![],
-            latest_block_id,
-            1000,
-            proposal_key,
-            ["f8d6e0586b0a20c7".to_string()].to_vec(),
-            "eb179c27144f783c".to_string(),
-        )
-        .await
-        .expect("Could not build transaction");
-
-        // sign the transaction
-        let signature = Sign {
-            address: "f8d6e0586b0a20c7".to_owned(),
-            key_id: 0,
-            private_key: "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec"
-                .to_owned(),
-        };
-        let signature1 = Sign {
-            address: "eb179c27144f783c".to_owned(),
-            key_id: 0,
-            private_key: "7cc3cac310c24e0bbd6a471b172fd306cf1e12502026a6ec390178a56ca70267"
-                .to_owned(),
-        };
-        let signed: Option<Transaction> =
-            sign_transaction(build, vec![&signature], vec![&signature1])
-                .await
-                .expect("Could not sign transaction");
-
-        // send to the blockchain
-        let transaction_execution: SendTransactionResponse =
-            execute_transaction("http://localhost:3569".to_string(), signed)
-                .await
-                .expect("Could not execute transaction");
-
-        // get the result of the transaction execution
-        let get_transaction_result: TransactionResultResponse = get_transaction_result(
-            "http://localhost:3569".to_string(),
-            transaction_execution.id,
-        )
-        .await
-        .expect("Could not get transaction result");
-        assert_eq!(0, get_transaction_result.status_code);
-    }
-    #[tokio::test]
-    async fn get_block_should_work() {
-        let _latest_block: BlockResponse =
-            get_block("http://localhost:3569".to_string(), None, None, Some(false))
-                .await
-                .expect("Could not get latest block");
-    }
-    #[tokio::test]
-    async fn get_events_for_height_range_should_work() {}
-    #[tokio::test]
-    async fn get_events_for_block_ids_should_work() {}
-    #[tokio::test]
-    async fn get_collection_should_work() {}
 }
