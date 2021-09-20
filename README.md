@@ -18,6 +18,15 @@ List of To-Do (incomplete):
 
 * Unit Testing - minimal unit testing has been completed
 
+## License
+
+This repository and contained code is licensed under either of
+
+ * [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+ * [MIT license](http://opensource.org/licenses/MIT)
+
+at your option.
+
 
 ### Current Usage Example:
 
