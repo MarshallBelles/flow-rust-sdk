@@ -16,11 +16,7 @@ Here's what works right now:
 
 List of To-Do (incomplete):
 
-* Unit Testing - the project has 0 unit testing coverage at the moment.
-* E2E Testing - yea, this also hasn't been done yet.
-* get_collection has not been tested
-* get_events_for_block_ids has not been tested
-* get_events_for_height_range has not been tested
+* Unit Testing - minimal unit testing has been completed
 
 
 ### Current Usage Example:
@@ -33,7 +29,7 @@ tokio = { version = "1.11.0", features = ["full"] }
 serde_json = "1.0.67"
 hex = "0.4.3"
 ```
-(this will be released on Crates.io once feature-complete)
+(this will be released on Crates.io soon)
 
 
 Usage within your main.rs:
@@ -157,4 +153,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(0, get_transaction_result.status_code);
     Ok(())
 }
+```
+
+New Utility Functionality
+-------------------------
+```rs
+    let network_address = "http://localhost:3569".to_string();
+    let payer = "f8d6e0586b0a20c7".to_string();
+    let payer_private_key =
+        "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec".to_string();
+
+    let acct = create_account(
+        &network_address,
+        vec!["bf891e8b117863579c22502311884e0a838930722cd136b96e913e6f7d60d647afcfeff7bb95bb30b0a3a5819f01575d5cd93690aa93b1f567136b67a3386923".to_string()],
+        &payer,
+        &payer_private_key,
+        0,
+    )
+    .await
+    .expect("Could not create account");
+    println!("{:?}", acct);
 ```
