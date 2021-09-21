@@ -582,7 +582,7 @@ mod tests {
         let collection = ss.get_default_collection().unwrap();
 
         // search items by properties
-        let search_items = ss.search_items(vec![("TESTNET_1_ADDRESS", "TESTNET_1_PRIVATE_KEY", "TESTNET_1_PUBLIC_KEY")]).unwrap();
+        let search_items = ss.search_items(vec!["TESTNET_1_ADDRESS", "TESTNET_1_PRIVATE_KEY", "TESTNET_1_PUBLIC_KEY"]).unwrap();
 
         let service_account_address = search_items.get(0).unwrap().get_secret().unwrap();
         let service_account_priv = search_items.get(1).unwrap().get_secret().unwrap();
@@ -595,9 +595,9 @@ mod tests {
         // create the account
 
         let network_address = "https://access.devnet.nodes.onflow.org:9000".to_string();
-        let payer = service_account_address.to_string();
-        let payer_private_key = service_account_priv.to_string();
-        let new_account_keys = vec![service_account_pub.to_string()];
+        let payer = String::from_utf8(service_account_address).unwrap();
+        let payer_private_key = String::from_utf8(service_account_priv).unwrap();
+        let new_account_keys = vec![String::from_utf8(service_account_pub).unwrap()];
 
         let acct = create_account(
             &network_address,
