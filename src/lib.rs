@@ -576,17 +576,17 @@ mod tests {
     #[tokio::test]
     async fn comprehensive_usage_case() {
         // get secrets from github
-        let ss = SecretService::new(EncryptionType::Dh)?;
+        let ss = SecretService::new(EncryptionType::Dh).unwrap();
 
         // get default collection
-        let collection = ss.get_default_collection()?;
+        let collection = ss.get_default_collection().unwrap();
 
         // search items by properties
-        let search_items = ss.search_items(vec![("TESTNET_1_ADDRESS", "TESTNET_1_PRIVATE_KEY", "TESTNET_1_PUBLIC_KEY")])?;
+        let search_items = ss.search_items(vec![("TESTNET_1_ADDRESS", "TESTNET_1_PRIVATE_KEY", "TESTNET_1_PUBLIC_KEY")]).unwrap();
 
-        let service_account_address = search_items.get(0)?.get_secret()?;
-        let service_account_priv = search_items.get(1)?.get_secret()?;
-        let service_account_pub = search_items.get(2)?.get_secret()?;
+        let service_account_address = search_items.get(0).unwrap().get_secret().unwrap();
+        let service_account_priv = search_items.get(1).unwrap().get_secret().unwrap();
+        let service_account_pub = search_items.get(2).unwrap().get_secret().unwrap();
 
         // create the public and private keys
 
