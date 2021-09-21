@@ -568,25 +568,14 @@ pub async fn create_account(
 #[cfg(test)]
 mod tests {
     use super::*;
-    extern crate secret_service;
-    use secret_service::EncryptionType;
-    use secret_service::SecretService;
-    use std::error::Error;
 
     #[tokio::test]
     async fn comprehensive_usage_case() {
-        // get secrets from github
-        let ss = SecretService::new(EncryptionType::Dh).unwrap();
 
-        // get default collection
-        let collection = ss.get_default_collection().unwrap();
-
-        // search items by properties
-        let search_items = ss.search_items(vec!["TESTNET_1_ADDRESS", "TESTNET_1_PRIVATE_KEY", "TESTNET_1_PUBLIC_KEY"]).unwrap();
-
-        let service_account_address = search_items.get(0).unwrap().get_secret().unwrap();
-        let service_account_priv = search_items.get(1).unwrap().get_secret().unwrap();
-        let service_account_pub = search_items.get(2).unwrap().get_secret().unwrap();
+        let service_account = std::env::vars().filter(|kv| kv.0 == "SERVICE_ACCT").map(|kv| kv.1).collect::<Vec<String>>();
+        let private_key = std::env::vars().filter(|kv| kv.0 == "PRIV_K").map(|kv| kv.1).collect::<Vec<String>>();
+        let public_key = std::env::vars().filter(|kv| kv.0 == "PUB_K").map(|kv| kv.1).collect::<Vec<String>>();
+        // let's first create an account
 
         // create the public and private keys
 
@@ -595,13 +584,13 @@ mod tests {
         // create the account
 
         let network_address = "https://access.devnet.nodes.onflow.org:9000".to_string();
-        let payer = String::from_utf8(service_account_address).unwrap();
-        let payer_private_key = String::from_utf8(service_account_priv).unwrap();
-        let new_account_keys = vec![String::from_utf8(service_account_pub).unwrap()];
+        let payer = &service_account[0];
+        let payer_private_key = &private_key[0];
+        let public_keys = vec![public_key[0].to_owned()];
 
         let acct = create_account(
             &network_address,
-            new_account_keys.to_vec(),
+            public_keys.to_vec(),
             &payer,
             &payer_private_key,
             0,
