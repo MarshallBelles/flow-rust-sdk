@@ -568,10 +568,25 @@ pub async fn create_account(
 #[cfg(test)]
 mod tests {
     use super::*;
+    extern crate secret_service;
+    use secret_service::EncryptionType;
+    use secret_service::SecretService;
+    use std::error::Error;
 
     #[tokio::test]
     async fn comprehensive_usage_case() {
-        // let's first create an account
+        // get secrets from github
+        let ss = SecretService::new(EncryptionType::Dh)?;
+
+        // get default collection
+        let collection = ss.get_default_collection()?;
+
+        // search items by properties
+        let search_items = ss.search_items(vec![("TESTNET_1_ADDRESS", "TESTNET_1_PRIVATE_KEY", "TESTNET_1_PUBLIC_KEY")])?;
+
+        let service_account_address = search_items.get(0)?.get_secret()?;
+        let service_account_priv = search_items.get(1)?.get_secret()?;
+        let service_account_pub = search_items.get(2)?.get_secret()?;
 
         // create the public and private keys
 
@@ -579,14 +594,14 @@ mod tests {
 
         // create the account
 
-        let network_address = "http://localhost:3569".to_string();
-        let payer = "f8d6e0586b0a20c7".to_string();
-        let payer_private_key =
-            "324db577a741a9b7a2eb6cef4e37e72ff01a554bdbe4bd77ef9afe1cb00d3cec".to_string();
+        let network_address = "https://access.devnet.nodes.onflow.org:9000".to_string();
+        let payer = service_account_address.to_string();
+        let payer_private_key = service_account_priv.to_string();
+        let new_account_keys = vec![service_account_pub.to_string()];
 
         let acct = create_account(
             &network_address,
-            vec!["bf891e8b117863579c22502311884e0a838930722cd136b96e913e6f7d60d647afcfeff7bb95bb30b0a3a5819f01575d5cd93690aa93b1f567136b67a3386923".to_string()],
+            new_account_keys.to_vec(),
             &payer,
             &payer_private_key,
             0,
