@@ -531,6 +531,10 @@ pub async fn create_account(
                 time = time + 200;
             }
             4 => {
+                if res.status_code == 1 {
+                    // stop execution, error.
+                    assert_ne!(res.error_message, res.error_message);
+                }
                 let new_account_address: flow::Event = res
                     .events
                     .into_iter()
