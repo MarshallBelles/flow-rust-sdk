@@ -1,6 +1,6 @@
 [package]
 name = "flow-rust-sdk"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2018"
 license = "Apache-2.0 OR MIT"
 description = """
@@ -9,6 +9,7 @@ utilizes the Flow gRPC AccessAPI to make requests on the flow blockchain.
 """
 repository = "https://github.com/MarshallBelles/flow-rust-sdk"
 readme = "README.md"
+
 
 [dependencies]
 tonic = "0.5"

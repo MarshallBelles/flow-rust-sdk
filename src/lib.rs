@@ -22,6 +22,19 @@
 //! Please open an issue in the [GitHub repository](https://github.com/MarshallBelles/flow-rust-sdk) if you find any bugs.
 //! For general questions, please join the [Flow Discord](https://discord.com/invite/flow). There is a flow-rust channel which is an excellent place for discussion!
 //! 
+//! ## Basic Usage
+//! 
+//! In your Cargo.toml
+//! ```
+//! flow-rust-sdk = "1.0.0"
+//! ```
+//! 
+//! You may also wish to add
+//! ```
+//! tokio = { version = "1.11.0", features = ["full"] }
+//! ```
+//! 
+
 
 
 // ****************************************************
@@ -47,7 +60,8 @@ use flow::{
 
 pub mod flow {
     //! `flow` is an exported module from the flow_rust_sdk.
-    //! It's types are generated directly from the [gRPC API Protobufs](https://github.com/onflow/flow/tree/master/protobuf).
+    //! It's types are generated directly from the gRPC API Protobufs
+    //! https://github.com/onflow/flow/tree/master/protobuf
     tonic::include_proto!("flow.access");
 }
 
@@ -294,7 +308,7 @@ pub async fn sign_transaction(
 }
 
 /// Sends the transaction to the blockchain.
-/// Make sure you [signed the transaction](sign_transaction) first.
+/// Make sure you signed the transactionsign_transaction first.
 pub async fn send_transaction(
     network_address: &String,
     transaction: Option<Transaction>,
