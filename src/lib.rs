@@ -26,7 +26,7 @@
 //! 
 //! In your Cargo.toml
 //! ```
-//! flow-rust-sdk = "1.0.0"
+//! flow-rust-sdk = "*" // replace * with the highest version available
 //! ```
 //! 
 //! You may also wish to add
@@ -34,11 +34,22 @@
 //! tokio = { version = "1.11.0", features = ["full"] }
 //! ```
 //! 
+//! ```
+//! use flow_rust_sdk::*;
+//! 
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // check if testnet is available
+//!     check_availability(&"grpc://access.devnet.nodes.onflow.org:9000".to_string()).await?;
+//!     Ok(())
+//! }
+//! ```
+//! 
 //! [`RustCrypto`]: https://github.com/RustCrypto
-//! [`this whitepaper by Google`]: https://cloud.google.com/solutions/modern-password-security-for-system-designers.pdf
-//! [`docs.rs`]: https://docs.rs/flow-rust-sdk/latest/flow_rust_sdk/
-//! [`GitHub repository`]: https://github.com/MarshallBelles/flow-rust-sdk
-//! [`Flow Discord`]: https://discord.com/invite/flow
+//! [this whitepaper by Google]: https://cloud.google.com/solutions/modern-password-security-for-system-designers.pdf
+//! [docs.rs]: https://docs.rs/flow-rust-sdk/latest/flow_rust_sdk/
+//! [GitHub repository]: https://github.com/MarshallBelles/flow-rust-sdk
+//! [Flow Discord]: https://discord.com/invite/flow
 
 
 
