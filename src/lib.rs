@@ -12,15 +12,15 @@
 //! 
 //! ## Security
 //! 
-//! - The cryptography in this SDK is sourced from the public [RustCrypto](https://github.com/RustCrypto) repositories. This is a very mature and widely used library, but the elliptic curve arithmetic contained in these crates has never been independently audited. *Use at your own risk.*
+//! - The cryptography in this SDK is sourced from the public [`RustCrypto`] repositories. This is a very mature and widely used library, but the elliptic curve arithmetic contained in these crates has never been independently audited. *Use at your own risk.*
 //! - Remember that you will be dealing with private keys, which can be more powerful and dangerous than passwords. Please treat them as such.
-//! - Consider reading [this whitepaper by Google](https://cloud.google.com/solutions/modern-password-security-for-system-designers.pdf).
+//! - Consider reading [`this whitepaper by Google`]
 //! 
 //! ## Documentation
 //! 
-//! See the [docs.rs](https://docs.rs/flow-rust-sdk/latest/flow_rust_sdk/) for full documentation.
-//! Please open an issue in the [GitHub repository](https://github.com/MarshallBelles/flow-rust-sdk) if you find any bugs.
-//! For general questions, please join the [Flow Discord](https://discord.com/invite/flow). There is a flow-rust channel which is an excellent place for discussion!
+//! See the [`docs.rs`] for full documentation.
+//! Please open an issue in the [`GitHub repository`] if you find any bugs.
+//! For general questions, please join the [`Flow Discord`]. There is a flow-rust channel which is an excellent place for discussion!
 //! 
 //! ## Basic Usage
 //! 
@@ -34,6 +34,11 @@
 //! tokio = { version = "1.11.0", features = ["full"] }
 //! ```
 //! 
+//! [`RustCrypto`]: https://github.com/RustCrypto
+//! [`this whitepaper by Google`]: https://cloud.google.com/solutions/modern-password-security-for-system-designers.pdf
+//! [`docs.rs`]: https://docs.rs/flow-rust-sdk/latest/flow_rust_sdk/
+//! [`GitHub repository`]: https://github.com/MarshallBelles/flow-rust-sdk
+//! [`Flow Discord`]: https://discord.com/invite/flow
 
 
 

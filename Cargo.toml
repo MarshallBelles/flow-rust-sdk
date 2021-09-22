@@ -1,6 +1,6 @@
 [package]
 name = "flow-rust-sdk"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2018"
 license = "Apache-2.0 OR MIT"
 description = """
