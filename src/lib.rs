@@ -24,10 +24,12 @@ pub mod flow {
     tonic::include_proto!("flow.access");
 }
 
+pub mod monolithic;
+
 // for signing transactions
 use bytes::Bytes;
-use p256::ecdsa::{signature::Signature, signature::Signer, SigningKey};
-use p256::elliptic_curve::SecretKey;
+use monolithic::ecdsa::{signature::Signature, signature::Signer, SigningKey};
+use monolithic::elliptic_curve::SecretKey;
 pub extern crate hex;
 extern crate rlp;
 use rlp::*;
