@@ -26,8 +26,8 @@ pub mod flow {
 
 // for signing transactions
 use bytes::Bytes;
-use p256_flow::ecdsa::{signature::Signature, signature::Signer, SigningKey};
-use p256_flow::elliptic_curve::SecretKey;
+use p256_flow::ecdsa::{signature_flow::Signature, signature_flow::Signer, SigningKey};
+use p256_flow::elliptic_curve_flow::SecretKey;
 pub extern crate hex;
 extern crate rlp;
 use rlp::*;
