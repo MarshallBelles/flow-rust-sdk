@@ -28,8 +28,7 @@ pub mod monolithic;
 
 // for signing transactions
 use bytes::Bytes;
-use monolithic::ecdsa::{signature::Signature, signature::Signer, SigningKey};
-use monolithic::elliptic_curve::SecretKey;
+use monolithic::{signature::Signature, signature::Signer, SigningKey, SecretKey};
 pub extern crate hex;
 extern crate rlp;
 use rlp::*;
