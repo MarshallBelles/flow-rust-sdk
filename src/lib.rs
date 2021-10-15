@@ -292,9 +292,14 @@ use tokio::time::{sleep, Duration};
 
 /// This is our argument builder.
 #[derive(Serialize)]
-pub struct Argument<T> {
+pub struct Argument<T: ?Sized> {
     r#type: &'static str,
     value: T,
+}
+impl Argument<dyn std::any::Any> {
+    pub fn process(&self) -> Vec<u8> {
+        return to_vec(json!(self)).unwrap()
+    }
 }
 /// Argument builder assuming a vec<String>
 impl Argument<Vec<Value>> {
