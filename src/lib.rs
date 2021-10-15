@@ -1,49 +1,4 @@
-//! Welcome to the Flow-Rust-SDK!
-//! We're glad to have you here.
-//! There are a few important items that we should cover real quick before you dive in.
-//!
-//! ## Signing Algorithms
-//!
-//! - Only `ECDSA_P256` is supported at this time
-//!
-//! ## Hashing
-//!
-//! - Only `SHA3_256` is supported at this time
-//!
-//! ## Security
-//!
-//! - The cryptography in this SDK is sourced from the public [`RustCrypto`](https://github.com/RustCrypto) repositories. This is a very mature and widely used library, but the elliptic curve arithmetic contained in these crates has never been independently audited. *Use at your own risk.*
-//! - Remember that you will be dealing with private keys, which can be more powerful and dangerous than passwords. Please treat them as such.
-//! - Consider reading [`this whitepaper by Google`](https://cloud.google.com/solutions/modern-password-security-for-system-designers.pdf)
-//!
-//! ## Documentation
-//!
-//! See the [`docs.rs`](https://docs.rs/flow-rust-sdk/latest/flow_rust_sdk/) for full documentation.
-//! Please open an issue in the [`GitHub repository`](https://github.com/MarshallBelles/flow-rust-sdk) if you find any bugs.
-//! For general questions, please join the [`Flow Discord`](https://discord.com/invite/flow). There is a flow-rust channel which is an excellent place for discussion!
-//!
-//! ## Basic Usage
-//!
-//! In your Cargo.toml
-//! ```
-//! flow-rust-sdk = "*" // replace * with the highest version available
-//! ```
-//!
-//! You may also wish to add
-//! ```
-//! tokio = { version = "1.11.0", features = ["full"] }
-//! ```
-//!
-//! ```
-//! use flow_rust_sdk::*;
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // check if testnet is available
-//!     check_availability(&"grpc://access.devnet.nodes.onflow.org:9000".to_string()).await?;
-//!     Ok(())
-//! }
-//! ```
+//! Flow-Rust-SDK API Reference
 //!
 
 // ****************************************************
@@ -217,6 +172,7 @@ impl FlowConnection<tonic::transport::Channel> {
         let response = self.client.get_collection_by_id(request).await?;
         Ok(response.into_inner())
     }
+    /// Create an account with the given `account_keys` and `payer`
     pub async fn create_account(
         &mut self,
         account_keys: Vec<String>,
@@ -339,14 +295,16 @@ pub struct Argument<T> {
     r#type: String,
     value: T,
 }
-
+/// Argument builder assuming a vec<String>
 impl Argument<Vec<Value>> {
+    /// Argument from array
     pub fn array(values: Vec<Value>) -> Argument<Vec<Value>> {
         return Argument {
             r#type: "Array".to_string(),
             value: values,
         };
     }
+    /// Argument from dictionary `Vec<(String, String)>`
     pub fn dictionary(values: Vec<(String, String)>) -> Argument<Vec<Value>> {
         return Argument {
             r#type: "Dictionary".to_string(),
@@ -357,7 +315,7 @@ impl Argument<Vec<Value>> {
         };
     }
 }
-
+/// Argument from `String`
 impl Argument<String> {
     pub fn string(value: String) -> Argument<String> {
         return Argument {
@@ -366,7 +324,6 @@ impl Argument<String> {
         };
     }
 }
-
 /// Utility function. Provides the ability to
 fn padding(vec: &mut Vec<u8>, count: usize) {
     let mut i: usize = count;
@@ -376,7 +333,6 @@ fn padding(vec: &mut Vec<u8>, count: usize) {
         i = i - 1;
     }
 }
-
 /// Construct a signature object. Pass this into the payload
 /// or envelope signatures when signing a transaction.
 pub struct Sign {
@@ -384,7 +340,6 @@ pub struct Sign {
     pub key_id: u32,
     pub private_key: String,
 }
-
 /// build_transaction will construct a `flow::Transaction` with the provided script and arguments.
 /// See the `Argument` struct for details on how to construct arguments.
 pub async fn build_transaction(
@@ -411,7 +366,6 @@ pub async fn build_transaction(
         payer: hex::decode(payer).unwrap(),
     })
 }
-
 /// Provides an envelope of the given transaction
 fn envelope_from_transaction(
     transaction: Transaction,
@@ -456,7 +410,6 @@ fn envelope_from_transaction(
 
     return out;
 }
-
 /// Provides a payload from a transaction
 fn payload_from_transaction(transaction: Transaction) -> Vec<u8> {
     let proposal_key = transaction.proposal_key.unwrap();
@@ -488,7 +441,6 @@ fn payload_from_transaction(transaction: Transaction) -> Vec<u8> {
 
     return out;
 }
-
 /// Returns the provided message as bytes, signed by the private key.
 fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error::Error>> {
     let secret_key = SecretKey::from_be_bytes(&hex::decode(private_key)?)?;
@@ -496,6 +448,7 @@ fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error:
     let signature = sig_key.sign(&message);
     Ok(signature.as_bytes().to_vec())
 }
+/// Process key arguments. Intended for use with `create_account`
 pub fn process_keys_args(account_keys: Vec<String>) -> Argument<Vec<Value>> {
     // do special processing for the keys, wrapping with algo, hash, and weight information:
     // algo: ECDSA_P256
@@ -572,65 +525,8 @@ pub async fn sign_transaction(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[tokio::test]
-    async fn comprehensive_usage_case() {
-        let service_account = std::env::vars()
-            .filter(|kv| kv.0 == "SERVICE_ACCT")
-            .map(|kv| kv.1)
-            .collect::<Vec<String>>();
-        let private_key = std::env::vars()
-            .filter(|kv| kv.0 == "PRIV_K")
-            .map(|kv| kv.1)
-            .collect::<Vec<String>>();
-        let public_key = std::env::vars()
-            .filter(|kv| kv.0 == "PUB_K")
-            .map(|kv| kv.1)
-            .collect::<Vec<String>>();
-        // let's first create an account
-
-        // create the public and private keys
-
-        // TODO
-
-        // create the account
-
-        // initiate the connection
-        let mut connection = FlowConnection::new("https://access.devnet.nodes.onflow.org:9000").await.expect("Could not establish a connection");
-
-        let payer = &service_account[0];
-        let payer_private_key = &private_key[0];
-        let public_keys = vec![public_key[0].to_owned()];
-
-        let acct = connection.create_account(
-            public_keys.to_vec(),
-            &payer,
-            &payer_private_key,
-            0,
-        )
-        .await
-        .expect("Could not create account");
-        println!("{:?}", acct);
-
-        // create a token contract
-
-        // TODO
-
-        // add contract to the newly created account
-
-        // TODO
-
-        // execute minting transaction
-
-        // TODO
-
-        // trade token for flow transaction
-
-        // TODO
-
-        // verify new balances
-
-        // TODO
+    async fn meaningful_test() {
+        println!("does not exist yet. :)")
     }
 }
