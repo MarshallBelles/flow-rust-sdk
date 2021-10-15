@@ -338,14 +338,28 @@ impl Argument<String> {
     pub fn ufix64(value: f64) -> Argument<String> {
         assert_eq!(value >= 0.0, true); // cannot have a negative ufix
         return Argument {
-            r#type: "[U]Fix64",
+            r#type: "UFix64",
+            value: value.to_string()
+        }
+    }
+    /// Take a f64 and turn it into an argument. Fixed point numbers are encoded as strings, so this will result in additional memory allocation when used.
+    pub fn fix64(value: f64) -> Argument<String> {
+        return Argument {
+            r#type: "Fix64",
             value: value.to_string()
         }
     }
     /// Take a u64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn uint64(value: u64) -> Argument<String> {
         return Argument {
-            r#type: "[U]Int64",
+            r#type: "UInt64",
+            value: value.to_string()
+        }
+    }
+    /// Take a i64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
+    pub fn int64(value: i64) -> Argument<String> {
+        return Argument {
+            r#type: "Int64",
             value: value.to_string()
         }
     }
