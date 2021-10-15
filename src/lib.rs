@@ -293,7 +293,7 @@ use tokio::time::{sleep, Duration};
 /// This is our argument builder.
 #[derive(Serialize)]
 pub struct Argument<T> {
-    r#type: String,
+    r#type: &'static str,
     value: T,
 }
 /// Argument builder assuming a vec<String>
@@ -301,14 +301,14 @@ impl Argument<Vec<Value>> {
     /// Argument from array
     pub fn array(values: Vec<Value>) -> Argument<Vec<Value>> {
         return Argument {
-            r#type: "Array".to_string(),
+            r#type: "Array",
             value: values,
         };
     }
     /// Argument from dictionary `Vec<(String, String)>`
     pub fn dictionary(values: Vec<(String, String)>) -> Argument<Vec<Value>> {
         return Argument {
-            r#type: "Dictionary".to_string(),
+            r#type: "Dictionary",
             value: values
                 .into_iter()
                 .map(|(x, y)| json!({"Key":x, "Value":y}))
@@ -316,45 +316,43 @@ impl Argument<Vec<Value>> {
         };
     }
 }
-/// Argument from `String`
+/// Boolean arguments
+impl Argument<bool> {
+    pub fn boolean(value: bool) -> Argument<bool> {
+        return Argument {
+            r#type: "Bool",
+            value
+        }
+    }
+}
+/// You will use this for most argument types. Before implementing new types, be sure to read https://docs.onflow.org/cadence/json-cadence-spec
 impl Argument<String> {
+    /// Take a String and turn it into an argument
     pub fn string(value: String) -> Argument<String> {
         return Argument {
-            r#type: "String".to_string(),
+            r#type: "String",
             value,
         };
     }
-}
-/// Argument from `u64`
-impl Argument<u64> {
-    pub fn uint64(value: u64) -> Argument<u64> {
-        return Argument {
-            r#type: "UInt64".to_string(),
-            value,
-        }
-    }
-}
-/// Argument from `i64`
-impl Argument<i64> {
-    pub fn int64(value: i64) -> Argument<i64> {
-        return Argument {
-            r#type: "Int".to_string(),
-            value
-        }
-    }
-}
-/// Argument from `f64`
-impl Argument<f64> {
-    pub fn ufix64(value: f64) -> Argument<f64> {
+    /// Take a positive f64 and turn it into an argument. Fixed point numbers are encoded as strings, so this will result in additional memory allocation when used.
+    pub fn ufix64(value: f64) -> Argument<String> {
         assert_eq!(value >= 0.0, true); // cannot have a negative ufix
         return Argument {
-            r#type: "UFix64".to_string(),
-            value
+            r#type: "[U]Fix64",
+            value: value.to_string()
         }
     }
-    pub fn fix64(value: f64) -> Argument<f64> {
+    /// Take a u64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
+    pub fn uint64(value: u64) -> Argument<String> {
         return Argument {
-            r#type: "Fix64".to_string(),
+            r#type: "[U]Int64",
+            value: value.to_string()
+        }
+    }
+    /// Take a hex-encoded string and turn it into an argument.
+    pub fn address(value: String) -> Argument<String> {
+        return Argument {
+            r#type: "Address",
             value
         }
     }
