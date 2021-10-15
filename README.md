@@ -3,6 +3,9 @@
 We're glad to have you here.
 There are a few important items that we should cover real quick before you dive in.
 
+## Versioning
+- This project uses [Semantic Versioning 2](https://semver.org/). Please keep this in mind when making public contributions to the project and bump the version appropriately.
+
 ## Signing Algorithms
 
 - Only `ECDSA_P256` is supported at this time
