@@ -292,14 +292,9 @@ use tokio::time::{sleep, Duration};
 
 /// This is our argument builder.
 #[derive(Serialize)]
-pub struct Argument<T: ?Sized> {
+pub struct Argument<T> {
     r#type: &'static str,
     value: T,
-}
-impl Argument<dyn std::any::Any> {
-    pub fn process(&self) -> Vec<u8> {
-        return to_vec(json!(self)).unwrap()
-    }
 }
 /// Argument builder assuming a vec<String>
 impl Argument<Vec<Value>> {
@@ -320,6 +315,10 @@ impl Argument<Vec<Value>> {
                 .collect(),
         };
     }
+    // process and encode argument
+    pub fn encode(&self) -> Vec<u8> {
+        return to_vec(&json!(self)).unwrap()
+    }
 }
 /// Boolean arguments
 impl Argument<bool> {
@@ -328,6 +327,10 @@ impl Argument<bool> {
             r#type: "Bool",
             value
         }
+    }
+    // process and encode argument
+    pub fn encode(&self) -> Vec<u8> {
+        return to_vec(&json!(self)).unwrap()
     }
 }
 /// You will use this for most argument types. Before implementing new types, be sure to read https://docs.onflow.org/cadence/json-cadence-spec
@@ -374,6 +377,10 @@ impl Argument<String> {
             r#type: "Address",
             value
         }
+    }
+    // process and encode argument
+    pub fn encode(&self) -> Vec<u8> {
+        return to_vec(&json!(self)).unwrap()
     }
 }
 /// Utility function. Provides the ability to
