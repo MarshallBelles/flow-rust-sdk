@@ -328,10 +328,6 @@ impl Argument<bool> {
             value
         }
     }
-    // process and encode argument
-    pub fn encode(&self) -> Vec<u8> {
-        return to_vec(&json!(self)).unwrap()
-    }
 }
 /// You will use this for most argument types. Before implementing new types, be sure to read https://docs.onflow.org/cadence/json-cadence-spec
 impl Argument<String> {
@@ -377,10 +373,6 @@ impl Argument<String> {
             r#type: "Address",
             value
         }
-    }
-    // process and encode argument
-    pub fn encode(&self) -> Vec<u8> {
-        return to_vec(&json!(self)).unwrap()
     }
 }
 /// Utility function. Provides the ability to
