@@ -110,7 +110,7 @@ impl FlowConnection<tonic::transport::Channel> {
         if block_id.is_some() {
             // IF block_id, use this
             let request = tonic::Request::new(GetBlockByIdRequest {
-                id: block_id.unwrap().as_bytes().to_vec(),
+                id: hex::decode(block_id.unwrap())?,
             });
             let response = self.client.get_block_by_id(request).await?;
             Ok(response.into_inner())
