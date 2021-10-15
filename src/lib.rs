@@ -63,8 +63,9 @@ impl FlowConnection<tonic::transport::Channel> {
     pub async fn execute_script(
         &mut self,
         script: Vec<u8>,
+        arguments: Vec<Vec<u8>>,
     ) -> Result<ExecuteScriptResponse, Box<dyn error::Error>> {
-        let request = tonic::Request::new(ExecuteScriptAtLatestBlockRequest { script });
+        let request = tonic::Request::new(ExecuteScriptAtLatestBlockRequest { script, arguments });
         let response = self.client.execute_script_at_latest_block(request).await?;
         Ok(response.into_inner())
     }
