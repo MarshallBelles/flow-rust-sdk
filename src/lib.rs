@@ -287,7 +287,7 @@ impl FlowConnection<tonic::transport::Channel> {
 // ****************************************************
 
 use serde::Serialize;
-use serde_json::{json, Value};
+pub use serde_json::{json, Value};
 use tokio::time::{sleep, Duration};
 
 /// This is our argument builder.
@@ -329,8 +329,24 @@ impl Argument<String> {
 impl Argument<u64> {
     pub fn uint64(value: u64) -> Argument<u64> {
         return Argument {
-            r#type: "Int".to_string(),
+            r#type: "UInt64".to_string(),
             value,
+        }
+    }
+}
+/// Argument from `f64`
+impl Argument<f64> {
+    pub fn ufix64(value: f64) -> Argument<f64> {
+        assert_eq!(value >= 0.0, true); // cannot have a negative ufix
+        return Argument {
+            r#type: "UFix64".to_string(),
+            value
+        }
+    }
+    pub fn fix64(value: f64) -> Argument<f64> {
+        return Argument {
+            r#type: "Fix64".to_string(),
+            value
         }
     }
 }
