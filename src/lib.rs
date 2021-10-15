@@ -215,8 +215,8 @@ impl FlowConnection<tonic::transport::Channel> {
         let transaction: Transaction = build_transaction(
             create_account_template.to_vec(),
             vec![
-                serde_json::to_vec(&keys_arg)?,
-                serde_json::to_vec(&contracts_arg)?,
+                to_vec(&keys_arg)?,
+                to_vec(&contracts_arg)?,
             ],
             latest_block.block.unwrap().id,
             1000,
@@ -287,7 +287,7 @@ impl FlowConnection<tonic::transport::Channel> {
 // ****************************************************
 
 use serde::Serialize;
-pub use serde_json::{json, Value};
+pub use serde_json::{json, Value, to_vec};
 use tokio::time::{sleep, Duration};
 
 /// This is our argument builder.
