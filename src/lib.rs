@@ -258,7 +258,7 @@ impl FlowConnection<tonic::transport::Channel> {
                         .collect::<Vec<flow::Event>>()
                         .pop()
                         .unwrap();
-                    let payload: Value = serde_json::from_slice(&new_account_address.payload)?;
+                    let payload: Value = from_slice(&new_account_address.payload)?;
                     let address: String = payload["value"]["fields"][0]["value"]["value"]
                         .to_string()
                         .split_at(3)
@@ -287,7 +287,7 @@ impl FlowConnection<tonic::transport::Channel> {
 // ****************************************************
 
 use serde::Serialize;
-pub use serde_json::{json, Value, to_vec};
+pub use serde_json::{json, Value, to_vec, from_slice};
 use tokio::time::{sleep, Duration};
 
 /// This is our argument builder.
