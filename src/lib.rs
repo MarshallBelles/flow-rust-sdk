@@ -334,6 +334,15 @@ impl Argument<u64> {
         }
     }
 }
+/// Argument from `i64`
+impl Argument<i64> {
+    pub fn int64(value: i64) -> Argument<i64> {
+        return Argument {
+            r#type: "Int".to_string(),
+            value
+        }
+    }
+}
 /// Argument from `f64`
 impl Argument<f64> {
     pub fn ufix64(value: f64) -> Argument<f64> {
