@@ -325,6 +325,15 @@ impl Argument<String> {
         };
     }
 }
+/// Argument from `u64`
+impl Argument<u64> {
+    pub fn uint64(value: u64) -> Argument<u64> {
+        return Argument {
+            r#type: "Int".to_string(),
+            value,
+        }
+    }
+}
 /// Utility function. Provides the ability to
 fn padding(vec: &mut Vec<u8>, count: usize) {
     let mut i: usize = count;
