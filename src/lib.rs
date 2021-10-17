@@ -1,5 +1,6 @@
 //! Flow-Rust-SDK API Reference
 //!
+//! See the [Wiki](https://github.com/MarshallBelles/flow-rust-sdk/wiki) for usage instructions.
 
 // ****************************************************
 // License: Apache V2.0 OR MIT, at your option
