@@ -42,11 +42,13 @@ pub struct FlowConnection<T> {
 /// The default implementation of a FlowConnection, using `tonic::transport::Channel`
 impl FlowConnection<tonic::transport::Channel> {
     /// Initializes a new connection and checks the availability of the node at the provided address
-    pub async fn new(network_address: &str) -> Result<FlowConnection<tonic::transport::Channel>, Box<dyn error::Error>> {
+    pub async fn new(
+        network_address: &str,
+    ) -> Result<FlowConnection<tonic::transport::Channel>, Box<dyn error::Error>> {
         let mut client = AccessApiClient::connect(network_address.to_owned()).await?;
         let request = tonic::Request::new(PingRequest {});
         client.ping(request).await?;
-        Ok(FlowConnection::<tonic::transport::Channel> {client})
+        Ok(FlowConnection::<tonic::transport::Channel> { client })
     }
     /// get_account will return the `flow::AccountResponse` of `network_address`, else an error if it could not be accessed.
     pub async fn get_account(
@@ -88,16 +90,6 @@ impl FlowConnection<tonic::transport::Channel> {
         // send to blockchain
         let request = tonic::Request::new(GetTransactionRequest { id });
         let response = self.client.get_transaction_result(request).await?;
-        Ok(response.into_inner())
-    }
-    /// get transaction result
-    pub async fn get_transaction(
-        &mut self,
-        id: Vec<u8>,
-    ) -> Result<TransactionResponse, Box<dyn error::Error>> {
-        // send to blockchain
-        let request = tonic::Request::new(GetTransactionRequest { id });
-        let response = self.client.get_transaction(request).await?;
         Ok(response.into_inner())
     }
     /// get_block accepts either the block_id or block_height. If neither are defined it returns the latest block.
@@ -196,12 +188,8 @@ impl FlowConnection<tonic::transport::Channel> {
             }
         }";
 
-        let latest_block: BlockResponse =
-            self.get_block(None, None, Some(false)).await?;
-        let account: flow::Account = self.get_account(payer)
-            .await?
-            .account
-            .unwrap();
+        let latest_block: BlockResponse = self.get_block(None, None, Some(false)).await?;
+        let account: flow::Account = self.get_account(payer).await?.account.unwrap();
         let proposer = TransactionProposalKey {
             address: hex::decode(payer).unwrap(),
             key_id,
@@ -214,10 +202,7 @@ impl FlowConnection<tonic::transport::Channel> {
         let contracts_arg = json!(contracts_arg);
         let transaction: Transaction = build_transaction(
             create_account_template.to_vec(),
-            vec![
-                to_vec(&keys_arg)?,
-                to_vec(&contracts_arg)?,
-            ],
+            vec![to_vec(&keys_arg)?, to_vec(&contracts_arg)?],
             latest_block.block.unwrap().id,
             1000,
             proposer,
@@ -232,8 +217,7 @@ impl FlowConnection<tonic::transport::Channel> {
         };
         let transaction: Option<Transaction> =
             sign_transaction(transaction, vec![], vec![&signature]).await?;
-        let transaction: SendTransactionResponse =
-            self.send_transaction(transaction).await?;
+        let transaction: SendTransactionResponse = self.send_transaction(transaction).await?;
         // poll for transaction completion
         let mut time: u64 = 50;
         let mut i = 0;
@@ -267,7 +251,8 @@ impl FlowConnection<tonic::transport::Channel> {
                         .split_at(16)
                         .0
                         .to_string();
-                    let acct: flow::Account = self.get_account(&address)
+                    let acct: flow::Account = self
+                        .get_account(&address)
                         .await?
                         .account
                         .expect("could not get newly created account");
@@ -280,6 +265,242 @@ impl FlowConnection<tonic::transport::Channel> {
         }
         return Err("Could not produce result")?;
     }
+    /// add a key
+    pub async fn add_key(
+        &mut self,
+        public_key_to_add: &str,
+        payer: &str,
+        payer_private_key: &str,
+        key_id: u32,
+    ) -> Result<flow::SendTransactionResponse, Box<dyn error::Error>> {
+        let update_contract_template = b"
+        transaction(publicKey: String) {
+            prepare(signer: AuthAccount) {
+                signer.addPublicKey(publicKey.decodeHex())
+            }
+        }
+        ";
+        let latest_block: BlockResponse = self.get_block(None, None, Some(false)).await?;
+        let account: flow::Account = self.get_account(payer).await?.account.unwrap();
+        let proposer = TransactionProposalKey {
+            address: hex::decode(payer).unwrap(),
+            key_id,
+            sequence_number: account.keys[key_id as usize].sequence_number as u64,
+        };
+        let public_key_to_add_arg = Argument::str(public_key_to_add);
+        let transaction: Transaction = build_transaction(
+            update_contract_template.to_vec(),
+            vec![
+                public_key_to_add_arg.encode_str(),
+            ],
+            latest_block.block.unwrap().id,
+            1000,
+            proposer,
+            vec![payer.to_owned()],
+            payer.to_owned(),
+        )
+        .await?;
+        let signature = Sign {
+            address: payer.to_owned(),
+            key_id,
+            private_key: payer_private_key.to_owned(),
+        };
+        let transaction: Option<Transaction> =
+            sign_transaction(transaction, vec![], vec![&signature]).await?;
+        let transaction: SendTransactionResponse = self.send_transaction(transaction).await?;
+
+        Ok(transaction)
+    }
+    /// remove a key
+    pub async fn remove_key(
+        &mut self,
+        key_to_remove: u64,
+        payer: &str,
+        payer_private_key: &str,
+        key_id: u32,
+    ) -> Result<flow::SendTransactionResponse, Box<dyn error::Error>> {
+        let update_contract_template = b"
+        transaction(keyIndex: Int) {
+            prepare(signer: AuthAccount) {
+                signer.removePublicKey(keyIndex)
+            }
+        }
+        ";
+        let latest_block: BlockResponse = self.get_block(None, None, Some(false)).await?;
+        let account: flow::Account = self.get_account(payer).await?.account.unwrap();
+        let proposer = TransactionProposalKey {
+            address: hex::decode(payer).unwrap(),
+            key_id,
+            sequence_number: account.keys[key_id as usize].sequence_number as u64,
+        };
+        let key_to_remove_arg = Argument::uint64(key_to_remove);
+        let transaction: Transaction = build_transaction(
+            update_contract_template.to_vec(),
+            vec![
+                key_to_remove_arg.encode()
+            ],
+            latest_block.block.unwrap().id,
+            1000,
+            proposer,
+            vec![payer.to_owned()],
+            payer.to_owned(),
+        )
+        .await?;
+        let signature = Sign {
+            address: payer.to_owned(),
+            key_id,
+            private_key: payer_private_key.to_owned(),
+        };
+        let transaction: Option<Transaction> =
+            sign_transaction(transaction, vec![], vec![&signature]).await?;
+        let transaction: SendTransactionResponse = self.send_transaction(transaction).await?;
+
+        Ok(transaction)
+    }
+    /// add a contract
+    pub async fn add_contract(
+        &mut self,
+        contract_name: &str,
+        contract_code: &str,
+        payer: &str,
+        payer_private_key: &str,
+        key_id: u32,
+    ) -> Result<flow::SendTransactionResponse, Box<dyn error::Error>> {
+        let update_contract_template = b"
+        transaction(name: String, code: String) {
+            prepare(signer: AuthAccount) {
+                signer.contracts.add(name: name, code: code.decodeHex())
+            }
+        }
+        ";
+        let latest_block: BlockResponse = self.get_block(None, None, Some(false)).await?;
+        let account: flow::Account = self.get_account(payer).await?.account.unwrap();
+        let proposer = TransactionProposalKey {
+            address: hex::decode(payer).unwrap(),
+            key_id,
+            sequence_number: account.keys[key_id as usize].sequence_number as u64,
+        };
+        let contract_name_arg = Argument::str(contract_name);
+        let contract_code_arg = Argument::str(contract_code);
+        let transaction: Transaction = build_transaction(
+            update_contract_template.to_vec(),
+            vec![
+                contract_name_arg.encode_str(),
+                contract_code_arg.encode_str(),
+            ],
+            latest_block.block.unwrap().id,
+            1000,
+            proposer,
+            vec![payer.to_owned()],
+            payer.to_owned(),
+        )
+        .await?;
+        let signature = Sign {
+            address: payer.to_owned(),
+            key_id,
+            private_key: payer_private_key.to_owned(),
+        };
+        let transaction: Option<Transaction> =
+            sign_transaction(transaction, vec![], vec![&signature]).await?;
+        let transaction: SendTransactionResponse = self.send_transaction(transaction).await?;
+
+        Ok(transaction)
+    }
+    /// update a contract
+    pub async fn update_contract(
+        &mut self,
+        contract_name: &str,
+        contract_code: &str,
+        payer: &str,
+        payer_private_key: &str,
+        key_id: u32,
+    ) -> Result<flow::SendTransactionResponse, Box<dyn error::Error>> {
+        let update_contract_template = b"
+        transaction(name: String, code: String) {
+            prepare(signer: AuthAccount) {
+                signer.contracts.update__experimental(name: name, code: code.decodeHex())
+            }
+        }
+        ";
+        let latest_block: BlockResponse = self.get_block(None, None, Some(false)).await?;
+        let account: flow::Account = self.get_account(payer).await?.account.unwrap();
+        let proposer = TransactionProposalKey {
+            address: hex::decode(payer).unwrap(),
+            key_id,
+            sequence_number: account.keys[key_id as usize].sequence_number as u64,
+        };
+        let contract_name_arg = Argument::str(contract_name);
+        let contract_code_arg = Argument::str(contract_code);
+        let transaction: Transaction = build_transaction(
+            update_contract_template.to_vec(),
+            vec![
+                contract_name_arg.encode_str(),
+                contract_code_arg.encode_str(),
+            ],
+            latest_block.block.unwrap().id,
+            1000,
+            proposer,
+            vec![payer.to_owned()],
+            payer.to_owned(),
+        )
+        .await?;
+        let signature = Sign {
+            address: payer.to_owned(),
+            key_id,
+            private_key: payer_private_key.to_owned(),
+        };
+        let transaction: Option<Transaction> =
+            sign_transaction(transaction, vec![], vec![&signature]).await?;
+        let transaction: SendTransactionResponse = self.send_transaction(transaction).await?;
+
+        Ok(transaction)
+    }
+    /// remove a contract
+    pub async fn remove_contract(
+        &mut self,
+        contract_name: &str,
+        payer: &str,
+        payer_private_key: &str,
+        key_id: u32,
+    ) -> Result<flow::SendTransactionResponse, Box<dyn error::Error>> {
+        let update_contract_template = b"
+        transaction(name: String) {
+            prepare(signer: AuthAccount) {
+                signer.contracts.remove(name: name)
+            }
+        }
+        ";
+        let latest_block: BlockResponse = self.get_block(None, None, Some(false)).await?;
+        let account: flow::Account = self.get_account(payer).await?.account.unwrap();
+        let proposer = TransactionProposalKey {
+            address: hex::decode(payer).unwrap(),
+            key_id,
+            sequence_number: account.keys[key_id as usize].sequence_number as u64,
+        };
+        let contract_name_arg = Argument::str(contract_name);
+        let transaction: Transaction = build_transaction(
+            update_contract_template.to_vec(),
+            vec![
+                contract_name_arg.encode_str(),
+            ],
+            latest_block.block.unwrap().id,
+            1000,
+            proposer,
+            vec![payer.to_owned()],
+            payer.to_owned(),
+        )
+        .await?;
+        let signature = Sign {
+            address: payer.to_owned(),
+            key_id,
+            private_key: payer_private_key.to_owned(),
+        };
+        let transaction: Option<Transaction> =
+            sign_transaction(transaction, vec![], vec![&signature]).await?;
+        let transaction: SendTransactionResponse = self.send_transaction(transaction).await?;
+
+        Ok(transaction)
+    }
 }
 
 // ****************************************************
@@ -287,7 +508,7 @@ impl FlowConnection<tonic::transport::Channel> {
 // ****************************************************
 
 use serde::Serialize;
-pub use serde_json::{json, Value, to_vec, from_slice};
+pub use serde_json::{from_slice, json, to_vec, Value};
 use tokio::time::{sleep, Duration};
 
 /// This is our argument builder.
@@ -315,9 +536,9 @@ impl Argument<Vec<Value>> {
                 .collect(),
         };
     }
-    // process and encode argument
-    pub fn encode(&self) -> Vec<u8> {
-        return to_vec(&json!(self)).unwrap()
+    // process and encode bytes argument
+    pub fn encode_arr(&self) -> Vec<u8> {
+        return to_vec(&json!(self)).unwrap();
     }
 }
 /// Boolean arguments
@@ -325,8 +546,8 @@ impl Argument<bool> {
     pub fn boolean(value: bool) -> Argument<bool> {
         return Argument {
             r#type: "Bool",
-            value
-        }
+            value,
+        };
     }
 }
 /// You can use this to avoid memory allocation when dealing only with str
@@ -334,8 +555,12 @@ impl Argument<&str> {
     pub fn str(value: &str) -> Argument<&str> {
         return Argument {
             r#type: "String",
-            value
-        }
+            value,
+        };
+    }
+    // process and encode bytes argument. Using this instead of `encode()` bypasses memory allocation as we don't have to worry about `String`s
+    pub fn encode_str(&self) -> Vec<u8> {
+        return to_vec(&json!(self)).unwrap();
     }
 }
 /// You will use this for most argument types. Before implementing new types, be sure to read https://docs.onflow.org/cadence/json-cadence-spec
@@ -352,36 +577,40 @@ impl Argument<String> {
         assert_eq!(value >= 0.0, true); // cannot have a negative ufix
         return Argument {
             r#type: "UFix64",
-            value: value.to_string()
-        }
+            value: value.to_string(),
+        };
     }
     /// Take a f64 and turn it into an argument. Fixed point numbers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn fix64(value: f64) -> Argument<String> {
         return Argument {
             r#type: "Fix64",
-            value: value.to_string()
-        }
+            value: value.to_string(),
+        };
     }
     /// Take a u64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn uint64(value: u64) -> Argument<String> {
         return Argument {
             r#type: "UInt64",
-            value: value.to_string()
-        }
+            value: value.to_string(),
+        };
     }
     /// Take a i64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn int64(value: i64) -> Argument<String> {
         return Argument {
             r#type: "Int64",
-            value: value.to_string()
-        }
+            value: value.to_string(),
+        };
     }
     /// Take a hex-encoded string and turn it into an argument.
     pub fn address(value: String) -> Argument<String> {
         return Argument {
             r#type: "Address",
-            value
-        }
+            value,
+        };
+    }
+    // process and encode bytes argument
+    pub fn encode(&self) -> Vec<u8> {
+        return to_vec(&json!(self)).unwrap();
     }
 }
 /// Utility function. Provides the ability to
