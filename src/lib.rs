@@ -51,7 +51,7 @@ impl FlowConnection<tonic::transport::Channel> {
     /// get_account will return the `flow::AccountResponse` of `network_address`, else an error if it could not be accessed.
     pub async fn get_account(
         &mut self,
-        account_address: String,
+        account_address: &str,
     ) -> Result<AccountResponse, Box<dyn error::Error>> {
         let request = tonic::Request::new(GetAccountAtLatestBlockRequest {
             address: hex::decode(account_address).unwrap(),
@@ -198,7 +198,7 @@ impl FlowConnection<tonic::transport::Channel> {
 
         let latest_block: BlockResponse =
             self.get_block(None, None, Some(false)).await?;
-        let account: flow::Account = self.get_account(payer.to_owned())
+        let account: flow::Account = self.get_account(payer)
             .await?
             .account
             .unwrap();
@@ -267,7 +267,7 @@ impl FlowConnection<tonic::transport::Channel> {
                         .split_at(16)
                         .0
                         .to_string();
-                    let acct: flow::Account = self.get_account(address)
+                    let acct: flow::Account = self.get_account(&address)
                         .await?
                         .account
                         .expect("could not get newly created account");
