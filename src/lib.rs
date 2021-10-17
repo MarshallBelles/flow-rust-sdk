@@ -139,12 +139,12 @@ impl FlowConnection<tonic::transport::Channel> {
     /// retrieve the specified events by type for the given height range
     pub async fn get_events_for_height_range(
         &mut self,
-        event_type: String,
+        event_type: &str,
         start_height: u64,
         end_height: u64,
     ) -> Result<EventsResponse, Box<dyn error::Error>> {
         let request = tonic::Request::new(GetEventsForHeightRangeRequest {
-            r#type: event_type,
+            r#type: event_type.to_owned(),
             start_height,
             end_height,
         });
@@ -154,11 +154,11 @@ impl FlowConnection<tonic::transport::Channel> {
     /// retrieve the specified events by type for the given blocks
     pub async fn get_events_for_block_ids(
         &mut self,
-        event_type: String,
+        event_type: &str,
         ids: Vec<Vec<u8>>,
     ) -> Result<EventsResponse, Box<dyn error::Error>> {
         let request = tonic::Request::new(GetEventsForBlockIdsRequest {
-            r#type: event_type,
+            r#type: event_type.to_owned(),
             block_ids: ids,
         });
         let response = self.client.get_events_for_block_i_ds(request).await?;
@@ -177,8 +177,8 @@ impl FlowConnection<tonic::transport::Channel> {
     pub async fn create_account(
         &mut self,
         account_keys: Vec<String>,
-        payer: &String,
-        payer_private_key: &String,
+        payer: &str,
+        payer_private_key: &str,
         key_id: u32,
     ) -> Result<flow::Account, Box<dyn error::Error>> {
         let create_account_template = b"
@@ -198,7 +198,7 @@ impl FlowConnection<tonic::transport::Channel> {
 
         let latest_block: BlockResponse =
             self.get_block(None, None, Some(false)).await?;
-        let account: flow::Account = self.get_account(payer.clone())
+        let account: flow::Account = self.get_account(payer.to_owned())
             .await?
             .account
             .unwrap();
@@ -221,14 +221,14 @@ impl FlowConnection<tonic::transport::Channel> {
             latest_block.block.unwrap().id,
             1000,
             proposer,
-            vec![payer.clone()],
-            payer.clone(),
+            vec![payer.to_owned()],
+            payer.to_owned(),
         )
         .await?;
         let signature = Sign {
-            address: payer.clone(),
+            address: payer.to_owned(),
             key_id,
-            private_key: payer_private_key.clone(),
+            private_key: payer_private_key.to_owned(),
         };
         let transaction: Option<Transaction> =
             sign_transaction(transaction, vec![], vec![&signature]).await?;
@@ -325,6 +325,15 @@ impl Argument<bool> {
     pub fn boolean(value: bool) -> Argument<bool> {
         return Argument {
             r#type: "Bool",
+            value
+        }
+    }
+}
+/// You can use this to avoid memory allocation when dealing only with str
+impl Argument<&str> {
+    pub fn str(value: &str) -> Argument<&str> {
+        return Argument {
+            r#type: "String",
             value
         }
     }
