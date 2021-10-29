@@ -51,7 +51,7 @@ impl FlowConnection<tonic::transport::Channel> {
         client.ping(request).await?;
         Ok(FlowConnection::<tonic::transport::Channel> { client })
     }
-    /// get_account will return the `flow::AccountResponse` of `network_address`, else an error if it could not be accessed.
+    /// get_account will return the `flow::AccountResponse` of `account_address`, else an error if it could not be accessed.
     pub async fn get_account(
         &mut self,
         account_address: &str,
@@ -67,10 +67,33 @@ impl FlowConnection<tonic::transport::Channel> {
         &mut self,
         script: Vec<u8>,
         arguments: Vec<Vec<u8>>,
+        block_height: Option<u64>,
+        block_id: Option<Vec<u8>>,
     ) -> Result<ExecuteScriptResponse, Box<dyn error::Error>> {
-        let request = tonic::Request::new(ExecuteScriptAtLatestBlockRequest { script, arguments });
-        let response = self.client.execute_script_at_latest_block(request).await?;
-        Ok(response.into_inner())
+        if block_id.is_some() {
+            // we are running the script against a specific block
+            let request = tonic::Request::new(ExecuteScriptAtBlockIdRequest {
+                script,
+                arguments,
+                block_id: block_id.unwrap(),
+            });
+            let response = self.client.execute_script_at_block_id(request).await?;
+            Ok(response.into_inner())
+        } else if block_height.is_some() {
+            // we are running the script against a block height
+            let request = tonic::Request::new(ExecuteScriptAtBlockHeightRequest {
+                script,
+                arguments,
+                block_height: block_height.unwrap(),
+            });
+            let response = self.client.execute_script_at_block_height(request).await?;
+            Ok(response.into_inner())
+        } else {
+            let request =
+                tonic::Request::new(ExecuteScriptAtLatestBlockRequest { script, arguments });
+            let response = self.client.execute_script_at_latest_block(request).await?;
+            Ok(response.into_inner())
+        }
     }
     /// Sends the transaction to the blockchain.
     /// Make sure you signed the transactionsign_transaction first.
@@ -291,9 +314,7 @@ impl FlowConnection<tonic::transport::Channel> {
         let public_key_to_add_arg = Argument::str(public_key_to_add);
         let transaction: Transaction = build_transaction(
             update_contract_template.to_vec(),
-            vec![
-                public_key_to_add_arg.encode_str(),
-            ],
+            vec![public_key_to_add_arg.encode_str()],
             latest_block.block.unwrap().id,
             1000,
             proposer,
@@ -337,9 +358,7 @@ impl FlowConnection<tonic::transport::Channel> {
         let key_to_remove_arg = Argument::uint64(key_to_remove);
         let transaction: Transaction = build_transaction(
             update_contract_template.to_vec(),
-            vec![
-                key_to_remove_arg.encode()
-            ],
+            vec![key_to_remove_arg.encode()],
             latest_block.block.unwrap().id,
             1000,
             proposer,
@@ -481,9 +500,7 @@ impl FlowConnection<tonic::transport::Channel> {
         let contract_name_arg = Argument::str(contract_name);
         let transaction: Transaction = build_transaction(
             update_contract_template.to_vec(),
-            vec![
-                contract_name_arg.encode_str(),
-            ],
+            vec![contract_name_arg.encode_str()],
             latest_block.block.unwrap().id,
             1000,
             proposer,
