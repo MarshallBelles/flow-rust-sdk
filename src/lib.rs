@@ -23,6 +23,8 @@ pub mod flow {
 }
 
 // for signing transactions
+pub use p256_flow::ecdsa::*;
+pub use rand_core::OsRng;
 use bytes::Bytes;
 use p256_flow::ecdsa::{signature_flow::Signature, signature_flow::Signer, SigningKey};
 use p256_flow::elliptic_curve_flow::SecretKey;
