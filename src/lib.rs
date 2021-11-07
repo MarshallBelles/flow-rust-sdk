@@ -249,17 +249,17 @@ impl FlowConnection<tonic::transport::Channel> {
         let mut i = 0;
         println!("{}", hex::encode(transaction.id.to_vec()));
         while i < 50 {
-            i = i + 1;
+            i += 1;
             sleep(Duration::from_millis(time)).await;
             let res = self.get_transaction_result(transaction.id.to_vec()).await?;
             match res.status {
                 0 | 1 | 2 | 3 => {
-                    time = time + 200;
+                    time += 200;
                 }
                 4 => {
                     if res.status_code == 1 {
                         // stop execution, error.
-                        assert_ne!(res.error_message, res.error_message);
+                        return Err("Error during execution".into());
                     }
                     let new_account_address: flow::Event = res
                         .events
@@ -284,12 +284,10 @@ impl FlowConnection<tonic::transport::Channel> {
                         .expect("could not get newly created account");
                     return Ok(acct);
                 }
-                _ => {
-                    return Err("Cadence Runtime Error")?;
-                }
+                _ => return Err("Cadence Runtime Error".into()),
             }
         }
-        return Err("Could not produce result")?;
+        Err("Could not produce result".into())
     }
     /// add a key
     pub async fn add_key(
@@ -541,105 +539,105 @@ pub struct Argument<T> {
 impl Argument<Vec<Value>> {
     /// Argument from array
     pub fn array(values: Vec<Value>) -> Argument<Vec<Value>> {
-        return Argument {
+        Argument {
             r#type: "Array",
             value: values,
-        };
+        }
     }
     /// Argument from dictionary `Vec<(String, String)>`
     pub fn dictionary(values: Vec<(String, String)>) -> Argument<Vec<Value>> {
-        return Argument {
+        Argument {
             r#type: "Dictionary",
             value: values
                 .into_iter()
                 .map(|(x, y)| json!({"Key":x, "Value":y}))
                 .collect(),
-        };
+        }
     }
     // process and encode bytes argument
     pub fn encode_arr(&self) -> Vec<u8> {
-        return to_vec(&json!(self)).unwrap();
+        to_vec(&json!(self)).unwrap()
     }
 }
 /// Boolean arguments
 impl Argument<bool> {
     pub fn boolean(value: bool) -> Argument<bool> {
-        return Argument {
+        Argument {
             r#type: "Bool",
             value,
-        };
+        }
     }
 }
 /// You can use this to avoid memory allocation when dealing only with str
 impl Argument<&str> {
     pub fn str(value: &str) -> Argument<&str> {
-        return Argument {
+        Argument {
             r#type: "String",
             value,
-        };
+        }
     }
     // process and encode bytes argument. Using this instead of `encode()` bypasses memory allocation as we don't have to worry about `String`s
     pub fn encode_str(&self) -> Vec<u8> {
-        return to_vec(&json!(self)).unwrap();
+        to_vec(&json!(self)).unwrap()
     }
 }
 /// You will use this for most argument types. Before implementing new types, be sure to read https://docs.onflow.org/cadence/json-cadence-spec
 impl Argument<String> {
     /// Take a String and turn it into an argument
     pub fn string(value: String) -> Argument<String> {
-        return Argument {
+        Argument {
             r#type: "String",
             value,
-        };
+        }
     }
     /// Take a positive f64 and turn it into an argument. Fixed point numbers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn ufix64(value: f64) -> Argument<String> {
-        assert_eq!(value >= 0.0, true); // cannot have a negative ufix
-        return Argument {
+        assert!(value >= 0.0, "{}", true); // cannot have a negative ufix
+        Argument {
             r#type: "UFix64",
             value: value.to_string(),
-        };
+        }
     }
     /// Take a f64 and turn it into an argument. Fixed point numbers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn fix64(value: f64) -> Argument<String> {
-        return Argument {
+        Argument {
             r#type: "Fix64",
             value: value.to_string(),
-        };
+        }
     }
     /// Take a u64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn uint64(value: u64) -> Argument<String> {
-        return Argument {
+        Argument {
             r#type: "UInt64",
             value: value.to_string(),
-        };
+        }
     }
     /// Take a i64 and turn it into an argument. Integers are encoded as strings, so this will result in additional memory allocation when used.
     pub fn int64(value: i64) -> Argument<String> {
-        return Argument {
+        Argument {
             r#type: "Int64",
             value: value.to_string(),
-        };
+        }
     }
     /// Take a hex-encoded string and turn it into an argument.
     pub fn address(value: String) -> Argument<String> {
-        return Argument {
+        Argument {
             r#type: "Address",
             value,
-        };
+        }
     }
     // process and encode bytes argument
     pub fn encode(&self) -> Vec<u8> {
-        return to_vec(&json!(self)).unwrap();
+        to_vec(&json!(self)).unwrap()
     }
 }
 /// Utility function. Provides the ability to
 fn padding(vec: &mut Vec<u8>, count: usize) {
     let mut i: usize = count;
-    i = i - vec.len();
+    i -= vec.len();
     while i > 0 {
         vec.push(0);
-        i = i - 1;
+        i -= 1;
     }
 }
 /// Construct a signature object. Pass this into the payload
@@ -662,9 +660,9 @@ pub async fn build_transaction(
 ) -> Result<Transaction, Box<dyn error::Error>> {
     Ok(Transaction {
         script,
-        arguments: arguments,
-        reference_block_id: reference_block_id,
-        gas_limit: gas_limit,
+        arguments,
+        reference_block_id,
+        gas_limit,
         proposal_key: Some(proposer),
         authorizers: authorizers
             .iter()
@@ -678,7 +676,7 @@ pub async fn build_transaction(
 /// Provides an envelope of the given transaction
 fn envelope_from_transaction(
     transaction: Transaction,
-    payload_signatures: &Vec<TransactionSignature>,
+    payload_signatures: &[TransactionSignature],
 ) -> Vec<u8> {
     let proposal_key = transaction.proposal_key.unwrap();
     let mut proposal_address = proposal_key.address;
@@ -707,7 +705,7 @@ fn envelope_from_transaction(
     }
 
     stream.begin_list(payload_signatures.len());
-    for (i, sig) in payload_signatures.into_iter().enumerate() {
+    for (i, sig) in payload_signatures.iter().enumerate() {
         let signature = sig.signature.to_vec();
         stream.begin_list(3);
         stream.append(&(i as u32));
@@ -715,9 +713,7 @@ fn envelope_from_transaction(
         stream.append(&signature);
     }
 
-    let out = stream.out().to_vec();
-
-    return out;
+    stream.out().to_vec()
 }
 /// Provides a payload from a transaction
 fn payload_from_transaction(transaction: Transaction) -> Vec<u8> {
@@ -745,10 +741,7 @@ fn payload_from_transaction(transaction: Transaction) -> Vec<u8> {
     for (_i, auth) in transaction.authorizers.into_iter().enumerate() {
         stream.append(&Bytes::from(auth).to_vec());
     }
-
-    let out = stream.out().to_vec();
-
-    return out;
+    stream.out().to_vec()
 }
 /// Returns the provided message as bytes, signed by the private key.
 fn sign(message: Vec<u8>, private_key: String) -> Result<Vec<u8>, Box<dyn error::Error>> {
@@ -763,12 +756,12 @@ pub fn process_keys_args(account_keys: Vec<String>) -> Argument<Vec<Value>> {
     // algo: ECDSA_P256
     // hash: SHA3_256
     // weight: 1000
-    return Argument::array(
+    Argument::array(
         account_keys
             .into_iter()
             .map(|x| json!(Argument::string(format!("f847b840{}02038203e8", x))))
             .collect::<Vec<Value>>(),
-    );
+    )
 }
 /// Sign the provided transaction.
 /// You will first need to `build_transaction`.
