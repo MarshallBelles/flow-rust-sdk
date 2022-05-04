@@ -200,12 +200,18 @@ impl FlowConnection<tonic::transport::Channel> {
         key_id: u32,
     ) -> Result<flow::Account, Box<dyn error::Error>> {
         let create_account_template = b"
+        import Crypto
+
         transaction(publicKeys: [String], contracts: {String: String}) {
             prepare(signer: AuthAccount) {
                 let acct = AuthAccount(payer: signer)
         
-                for key in publicKeys {
-                    acct.addPublicKey(key.decodeHex())
+                for pkey in publicKeys {
+                    let key = PublicKey(
+                        publicKey: pkey.decodeHex(),
+                        signatureAlgorithm: SignatureAlgorithm.ECDSA_P256
+                    )
+			              acct.keys.add(publicKey: key, hashAlgorithm: HashAlgorithm.SHA3_256, weight: 1000.0)
                 }
         
                 for contract in contracts.keys {
@@ -298,9 +304,15 @@ impl FlowConnection<tonic::transport::Channel> {
         key_id: u32,
     ) -> Result<flow::SendTransactionResponse, Box<dyn error::Error>> {
         let update_contract_template = b"
+        import Crypto
+
         transaction(publicKey: String) {
             prepare(signer: AuthAccount) {
-                signer.addPublicKey(publicKey.decodeHex())
+                    let key = PublicKey(
+                        publicKey: pkey.decodeHex(),
+                        signatureAlgorithm: SignatureAlgorithm.ECDSA_P256
+                    )
+                    signer.keys.add(publicKey: key, hashAlgorithm: HashAlgorithm.SHA3_256, weight: 1000.0)
             }
         }
         ";
@@ -344,7 +356,7 @@ impl FlowConnection<tonic::transport::Channel> {
         let update_contract_template = b"
         transaction(keyIndex: Int) {
             prepare(signer: AuthAccount) {
-                signer.removePublicKey(keyIndex)
+                signer.keys.revoke(keyIndex)
             }
         }
         ";
